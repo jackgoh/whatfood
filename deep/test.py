@@ -32,7 +32,7 @@ img_channels = 3
 
 def load_data():
     # load your data using this function
-    f = open("../dataset/myfood100-227.pkl", 'rb')
+    f = open("../dataset/myfood10-227.pkl", 'rb')
 
     d = pickle.load(f)
     data = d['trainFeatures']
@@ -112,7 +112,7 @@ def train_and_evaluate_model(model, X_train, y_train, X_test, y_test):
         #          nb_epoch=nb_epoch,
         #          validation_data=(X_test, Y_test),
         #          shuffle=True)
-
+        
         model.fit(X_train, Y_train, nb_epoch=nb_epoch, batch_size=batch_size)
 
         scores = model.evaluate(X_test, Y_test)
