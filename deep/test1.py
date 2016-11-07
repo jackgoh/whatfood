@@ -21,10 +21,10 @@ weights_path = '../dataset/vgg16_weights.h5'
 top_model_weights_path = 'bottleneck_fc_model.h5'
 # dimensions of our images.
 img_width, img_height = 150, 150
-nb_classes = 100
+nb_classes = 10
 
-nb_train_samples = 1340
-nb_validation_samples = 660
+nb_train_samples = 1500
+nb_validation_samples = 500
 nb_epoch = 2
 
 def load_data():
@@ -107,6 +107,7 @@ def save_bottlebeck_features(X_train, X_test, y_train, y_test):
 def train_top_model(y_train, y_test):
     train_data = np.load(open('bottleneck_features_train.npy' , 'rb'))
     #train_labels = np.array([0] * (nb_train_samples / 2) + [1] * (nb_train_samples / 2))
+    print train_data.shape
 
     validation_data = np.load(open('bottleneck_features_validation.npy', 'rb'))
     #validation_labels = np.array([0] * (nb_validation_samples / 2) + [1] * (nb_validation_samples / 2))
@@ -146,10 +147,10 @@ if __name__ == "__main__":
     lz = np.array(lz)
     print "Data loaded !"
 
-    X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.33, random_state=seed)
+    X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.15, random_state=seed)
     print X_train.shape
     print X_test.shape
     print "Test train splitted !"
 
-    #save_bottlebeck_features(X_train, X_test, y_train, y_test)
+    save_bottlebeck_features(X_train, X_test, y_train, y_test)
     train_top_model(y_train, y_test)
