@@ -6,6 +6,7 @@ from keras.models import Sequential
 from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D
 from keras.layers import Activation, Dropout, Flatten, Dense
 from sklearn.model_selection import train_test_split
+from sklearn.utils import column_or_1d
 from keras.optimizers import SGD
 from sklearn import svm
 try:
@@ -94,7 +95,7 @@ def save_bottlebeck_features(X_train, X_test, y_train, y_test):
 
     model.pop()
     model.pop()
-   
+
     bottleneck_features_train = model.predict(X_train, batch_size=32)
     np.save(open('bottleneck_features_train.npy', 'wb'), bottleneck_features_train)
 
@@ -129,11 +130,12 @@ def train_top_model(y_train, y_test):
               validation_data=(validation_data, validation_labels))
     model.save_weights(top_model_weights_path)
     '''
-    print "Training SVM"
+    print "Training SVM.."
     clf = svm.SVC(kernel='rbf', gamma=0.7, C=1.0)
-    clf.fit(train_data, y_train)
+
+    clf.fit(train_data, y_train.ravel())
     #y_pred = clf.predict(test_data)
-    score = clf.score(validation_data, y_test)
+    score = clf.score(validation_data, y_test.ravel())
     print score
 
 if __name__ == "__main__":
@@ -149,5 +151,5 @@ if __name__ == "__main__":
     print X_test.shape
     print "Test train splitted !"
 
-    save_bottlebeck_features(X_train, X_test, y_train, y_test)
+    #save_bottlebeck_features(X_train, X_test, y_train, y_test)
     train_top_model(y_train, y_test)
