@@ -43,6 +43,8 @@ def save_bottleneck_features(X_train, X_test, y_train, y_test):
 def train_top_model(y_train, y_test):
     train_data = np.load(open("bottleneck_features_train.npy", 'rb'))
     validation_data = np.load(open('bottleneck_features_validation.npy', 'rb'))
+    print train_data.shape
+    print validation_data.shape
 
     train_labels = y_train
     validation_labels =  y_test

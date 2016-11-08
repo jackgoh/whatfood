@@ -107,11 +107,13 @@ def save_bottlebeck_features(X_train, X_test, y_train, y_test):
 def train_top_model(y_train, y_test):
     train_data = np.load(open('bottleneck_features_train.npy' , 'rb'))
     #train_labels = np.array([0] * (nb_train_samples / 2) + [1] * (nb_train_samples / 2))
-    print train_data.shape
+
 
     validation_data = np.load(open('bottleneck_features_validation.npy', 'rb'))
     #validation_labels = np.array([0] * (nb_validation_samples / 2) + [1] * (nb_validation_samples / 2))
 
+    print train_data.shape
+    print validation_data.shape
     '''
     model = Sequential()
     model.add(Flatten(input_shape=train_data.shape[1:]))

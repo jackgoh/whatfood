@@ -4,11 +4,20 @@ import numpy as np
 from keras.preprocessing.image import ImageDataGenerator
 from keras.models import Sequential
 from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D
-from keras.layers import Activation, Dropout, Flatten, Dense
+from keras.layers import Activation, Dropout, Flatten, Dense, Input
+from keras.optimizers import RMSprop
 from sklearn.model_selection import train_test_split
 from sklearn.utils import column_or_1d
+from keras.regularizers import l2
+from keras.models import Model
 from keras.optimizers import SGD
 from sklearn import svm
+from keras.callbacks import EarlyStopping, ModelCheckpoint
+import matplotlib.pyplot as plt
+from sklearn.metrics import classification_report,confusion_matrix
+
+import util
+
 try:
     import cPickle as pickle
 except:
@@ -25,7 +34,17 @@ nb_classes = 10
 
 nb_train_samples = 1700
 nb_validation_samples = 300
-nb_epoch = 50
+nb_epoch = 40
+
+
+def get_layer_weights(weights_file=None, layer_name=None):
+    if not weights_file or not layer_name:
+        return None
+    else:
+        g = weights_file[layer_name]
+        weights = [g[p] for p in g]
+        print 'Weights for "{}" are loaded'.format(layer_name)
+        return weights
 
 def load_data():
     # load your data using this function
@@ -100,42 +119,60 @@ def save_bottlebeck_features(X_train, X_test, y_train, y_test):
     bottleneck_features_validation = model.predict(X_test, batch_size=32)
     np.save(open('bottleneck_features_validation.npy', 'wb'), bottleneck_features_validation)
 
+def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.jet):
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(10)
+    plt.xticks(tick_marks, ['AisKacang' , 'AngKuKueh' , 'ApamBalik' , 'Asamlaksa' , 'Bahulu' , 'Bakkukteh',
+    'BananaLeafRice' , 'Bazhang' , 'BeefRendang' , 'BingkaUbi'], rotation=45)
+    plt.yticks(tick_marks, ['AisKacang' , 'AngKuKueh' , 'ApamBalik' , 'Asamlaksa' , 'Bahulu' , 'Bakkukteh',
+    'BananaLeafRice' , 'Bazhang' , 'BeefRendang' , 'BingkaUbi'])
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
 
 def train_top_model(y_train, y_test):
     train_data = np.load(open('bottleneck_features_train.npy' , 'rb'))
-    #train_labels = np.array([0] * (nb_train_samples / 2) + [1] * (nb_train_samples / 2))
-    print train_data.shape
-    print train_data.shape[1:]
-
     validation_data = np.load(open('bottleneck_features_validation.npy', 'rb'))
-    #validation_labels = np.array([0] * (nb_validation_samples / 2) + [1] * (nb_validation_samples / 2))
 
+
+    print train_data.shape
+    print validation_data.shape
     print "Training CNN.."
 
-    model_fc = Sequential()
-    model_fc.add(Flatten(input_shape=train_data.shape[1:])) # shape cut sample index, get the shape of feature map
-    model_fc.add(Dense(256, activation='relu'))
-    model_fc.add(Dropout(0.5))
-    model_fc.add(Dense(10, activation='softmax'))
+    input = None
+    shape=train_data.shape[1:]
+    output = None
+    W_regularizer=True
+    weights_file_path = None
+    weights_file = None
 
-    model_fc.compile(optimizer='rmsprop',   # faster than SGD
-                     loss='categorical_crossentropy',
-                     metrics=['accuracy'])
-    model_fc.fit(train_data, y_train,
-                 nb_epoch=50, batch_size=32,
-                 validation_data=(validation_data, y_test))
-    model_fc.save_weights('bottleneck_fc_classifier_model.h5') # requried by fine-tuning
+    model = Sequential()
+    model.add(Flatten(name='flatten', input_shape=shape))
+    W_regularizer = l2(1e-2)
+    model.add(Dense(4096, activation='relu',W_regularizer=W_regularizer))
+    model.add(Dropout(0.6))
+    W_regularizer = l2(1e-2)
+    model.add(Dense(4096, activation='relu',W_regularizer=W_regularizer))
+    model.add(Dense(nb_classes,activation='softmax'))
 
+    rms = RMSprop(lr=5e-4, rho=0.9, epsilon=1e-08, decay=0.01)
+    model.compile(optimizer=rms, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-    '''
-    print "Training SVM.."
-    clf = svm.SVC(kernel='rbf', gamma=0.7, C=1.0)
+    model.fit(train_data, y_train,
+              nb_epoch=nb_epoch, batch_size=32,
+              validation_data=(validation_data, y_test))
 
-    clf.fit(train_data, y_train.ravel())
-    #y_pred = clf.predict(test_data)
-    score = clf.score(validation_data, y_test.ravel())
-    print score
-    '''
+    y_pred = model.predict_classes(validation_data)
+    print(y_pred)
+
+    p=model.predict_proba(validation_data) # to predict probability
+
+    cm = confusion_matrix(y_test, y_pred)
+    np.set_printoptions(precision=2)
+    plt.figure()
+    plot_confusion_matrix(cm)
 
 if __name__ == "__main__":
     print "Loading data.."
@@ -150,5 +187,5 @@ if __name__ == "__main__":
     print X_test.shape
     print "Test train splitted !"
 
-    save_bottlebeck_features(X_train, X_test, y_train, y_test)
+    #save_bottlebeck_features(X_train, X_test, y_train, y_test)
     train_top_model(y_train, y_test)
