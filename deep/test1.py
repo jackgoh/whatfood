@@ -7,8 +7,16 @@ from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D
 from keras.layers import Activation, Dropout, Flatten, Dense
 from sklearn.model_selection import train_test_split
 from sklearn.utils import column_or_1d
-from keras.optimizers import SGD
+from keras.optimizers import SGD,RMSprop
+from keras.regularizers import l2
+from keras.utils import np_utils
 from sklearn import svm
+
+from sklearn.metrics import classification_report,confusion_matrix
+import matplotlib.pyplot as plt
+import matplotlib
+import os
+
 try:
     import cPickle as pickle
 except:
@@ -19,6 +27,7 @@ np.random.seed(seed)
 # path to the model weights file.
 weights_path = '../dataset/vgg16_weights.h5'
 top_model_weights_path = 'bottleneck_fc_model.h5'
+f_model = './model'
 # dimensions of our images.
 img_width, img_height = 150, 150
 nb_classes = 10
@@ -114,24 +123,33 @@ def train_top_model(y_train, y_test):
 
     print train_data.shape
     print validation_data.shape
-    '''
+
     model = Sequential()
     model.add(Flatten(input_shape=train_data.shape[1:]))
     model.add(Dense(256, activation='relu'))
     model.add(Dropout(0.5))
-    model.add(Dense(nb_classes,name='dense_3'))
-    model.add(Activation("softmax",name="softmax"))
+    model.add(Dense(10, activation='softmax'))
 
-    #model.compile(optimizer='rmsprop', loss='binary_crossentropy', metrics=['accuracy'])
-    sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-    model.compile(loss='categorical_crossentropy',
-                  optimizer=sgd,
+    rms = RMSprop(lr=5e-4, rho=0.9, epsilon=1e-08, decay=0.01)
+
+    model.compile(optimizer=rms,
+                  loss='categorical_crossentropy',
                   metrics=['accuracy'])
 
-    model.fit(train_data, train_labels,
-              nb_epoch=nb_epoch, batch_size=32,
-              validation_data=(validation_data, validation_labels))
+    model.fit(train_data, y_train,
+          nb_epoch=50, batch_size=32,
+          validation_data=(validation_data, y_test))
+
     model.save_weights(top_model_weights_path)
+    json_string = model.to_json()
+    open(os.path.join(f_model,'test_model.json'), 'w').write(json_string)
+
+    y_proba = model.predict(validation_data)
+    y_pred = np_utils.probas_to_classes(y_proba)
+    target_names = ['class 0(BIKES)', 'class 1(CARS)', 'class 2(HORSES)','3','3','3','3','3','3','3']
+    print(classification_report(np.argmax(y_test,axis=1), y_pred,target_names=target_names))
+    print(confusion_matrix(np.argmax(y_test,axis=1), y_pred))
+
     '''
     print "Training SVM.."
     clf = svm.SVC(kernel='rbf', gamma=0.7, C=1.0)
@@ -140,6 +158,7 @@ def train_top_model(y_train, y_test):
     #y_pred = clf.predict(test_data)
     score = clf.score(validation_data, y_test.ravel())
     print score
+    '''
 
 if __name__ == "__main__":
     print "Loading data.."
@@ -154,5 +173,5 @@ if __name__ == "__main__":
     print X_test.shape
     print "Test train splitted !"
 
-    save_bottlebeck_features(X_train, X_test, y_train, y_test)
+    #save_bottlebeck_features(X_train, X_test, y_train, y_test)
     train_top_model(y_train, y_test)

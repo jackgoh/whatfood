@@ -1,10 +1,20 @@
 import numpy as np
 import os
+
 from keras.preprocessing.image import ImageDataGenerator
 from keras.optimizers import RMSprop
 from keras.applications.vgg16 import VGG16
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from sklearn.model_selection import train_test_split
+from keras.utils import np_utils
+
+from sklearn.metrics import classification_report,confusion_matrix
+import matplotlib.pyplot as plt
+import matplotlib
+import os
+import theano
+from PIL import Image
+
 import util
 
 try:
@@ -42,13 +52,15 @@ def save_bottleneck_features(X_train, X_test, y_train, y_test):
 
 def train_top_model(y_train, y_test):
     train_data = np.load(open("bottleneck_features_train.npy", 'rb'))
+    #train_labels = np.array([0] * (nb_train_samples / 2) + [1] * (nb_train_samples / 2))
     validation_data = np.load(open('bottleneck_features_validation.npy', 'rb'))
+    #validation_labels = np.array([0] * (nb_validation_samples / 2) + [1] * (nb_validation_samples / 2))
+
     print train_data.shape
     print validation_data.shape
 
     train_labels = y_train
     validation_labels =  y_test
-
 
     model = util.get_top_model_for_VGG16(shape=train_data.shape[1:], nb_class=10, W_regularizer=True)
     rms = RMSprop(lr=5e-4, rho=0.9, epsilon=1e-08, decay=0.01)
@@ -61,9 +73,16 @@ def train_top_model(y_train, y_test):
     history = model.fit(
         train_data,
         train_labels,
-        nb_epoch=100,
+        nb_epoch=10,
         validation_data=(validation_data, validation_labels),
         callbacks=callbacks_list)
+
+    y_proba = model.predict(validation_data)
+    y_pred = np_utils.probas_to_classes(y_proba)
+
+    target_names = ['class 0(BIKES)', 'class 1(CARS)', 'class 2(HORSES)','3','3','3','3','3','3','3']
+    print(classification_report(np.argmax(validation_labels,axis=1), y_pred,target_names=target_names))
+    print(confusion_matrix(np.argmax(validation_labels,axis=1), y_pred))
 
 
 
@@ -81,5 +100,5 @@ if __name__ == "__main__":
     print "Test train splitted !"
 
 
-    #save_bottleneck_features(X_train, X_test, y_train, y_test)
+    save_bottleneck_features(X_train, X_test, y_train, y_test)
     train_top_model(y_train, y_test)

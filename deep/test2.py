@@ -157,22 +157,17 @@ def train_top_model(y_train, y_test):
     model.add(Dense(4096, activation='relu',W_regularizer=W_regularizer))
     model.add(Dense(nb_classes,activation='softmax'))
 
-    rms = RMSprop(lr=5e-4, rho=0.9, epsilon=1e-08, decay=0.01)
-    model.compile(optimizer=rms, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.pop()
 
-    model.fit(train_data, y_train,
-              nb_epoch=nb_epoch, batch_size=32,
-              validation_data=(validation_data, y_test))
+    bottleneck_features_train = model.predict(train_data, batch_size=32)
+    bottleneck_features_validation = model.predict(validation_data, batch_size=32)
+    print "Training SVM.."
+    clf = svm.SVC(kernel='rbf', gamma=0.7, C=1.0)
 
-    y_pred = model.predict_classes(validation_data)
-    print(y_pred)
-
-    p=model.predict_proba(validation_data) # to predict probability
-
-    cm = confusion_matrix(y_test, y_pred)
-    np.set_printoptions(precision=2)
-    plt.figure()
-    plot_confusion_matrix(cm)
+    clf.fit(bottleneck_features_train, y_train.ravel())
+    #y_pred = clf.predict(test_data)
+    score = clf.score(bottleneck_features_validation, y_test.ravel())
+    print score
 
 if __name__ == "__main__":
     print "Loading data.."
