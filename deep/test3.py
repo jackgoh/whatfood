@@ -1,90 +1,129 @@
-import numpy as np
 import os
-
+import h5py
+from sklearn.cross_validation import StratifiedKFold
+from keras.datasets import cifar10
 from keras.preprocessing.image import ImageDataGenerator
-from keras.optimizers import RMSprop
-from keras.applications.vgg16 import VGG16
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from sklearn.model_selection import train_test_split
+from keras.models import Sequential, Model
+from keras.layers import Flatten, Dense, Dropout, Reshape, Permute, Activation, \
+Input, merge
+from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
+
+from convnetskeras.customlayers import convolution2Dgroup, crosschannelnormalization, \
+splittensor, Softmax4D
+
+from keras.layers import Convolution2D, MaxPooling2D
+from keras.optimizers import SGD,RMSprop
 from keras.utils import np_utils
-
-from sklearn.metrics import classification_report,confusion_matrix
-import matplotlib.pyplot as plt
-import matplotlib
-import os
-import theano
-from PIL import Image
-
-import util
+import numpy as np
 
 try:
     import cPickle as pickle
 except:
     import pickle
 
-seed = 7
-np.random.seed(seed)
-nb_train_samples = 1700
-nb_validation_samples = 300
+batch_size = 32
+nb_classes = 10
+nb_epoch = 100
+data_augmentation = False
+
+# input image dimensions
+img_rows, img_cols = 227,227
+img_channels = 3
 
 def load_data():
     # load your data using this function
-    f = open("../dataset/myfood10-224.pkl", 'rb')
+    f = open("../dataset/myfood10-227.pkl", 'rb')
+
     d = pickle.load(f)
     data = d['trainFeatures']
     labels = d['trainLabels']
     lz = d['labels']
-    data = data.reshape(data.shape[0], 3, 224, 224)
+    data = data.reshape(data.shape[0], 3, 227, 227)
     #data = data.transpose(0, 2, 3, 1)
 
     return data,labels,lz
 
-def save_bottleneck_features(X_train, X_test, y_train, y_test):
-    model = VGG16(weights='imagenet', include_top=False)
+def save_bottlebeck_features(X_train, X_test, y_train, y_test):
+    datagen = ImageDataGenerator(rescale=1./255)
 
-    bottleneck_features_train = model.predict(X_train)
-    np.save(open("bottleneck_features_train.npy", 'w'), bottleneck_features_train)
+    inputs = Input(shape=(3,227,227))
 
+    conv_1 = Convolution2D(96, 11, 11,subsample=(4,4),activation='relu',
+                           name='conv_1')(inputs)
 
-    bottleneck_features_validation = model.predict(X_test)
-    np.save(open('bottleneck_features_validation.npy', 'w'), bottleneck_features_validation)
+    conv_2 = MaxPooling2D((3, 3), strides=(2,2))(conv_1)
+    conv_2 = crosschannelnormalization(name="convpool_1")(conv_2)
+    conv_2 = ZeroPadding2D((2,2))(conv_2)
+    conv_2 = merge([
+        Convolution2D(128,5,5,activation="relu",name='conv_2_'+str(i+1))(
+            splittensor(ratio_split=2,id_split=i)(conv_2)
+        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_2")
 
+    conv_3 = MaxPooling2D((3, 3), strides=(2, 2))(conv_2)
+    conv_3 = crosschannelnormalization()(conv_3)
+    conv_3 = ZeroPadding2D((1,1))(conv_3)
+    conv_3 = Convolution2D(384,3,3,activation='relu',name='conv_3')(conv_3)
 
-def train_top_model(y_train, y_test):
-    train_data = np.load(open("bottleneck_features_train.npy", 'rb'))
-    #train_labels = np.array([0] * (nb_train_samples / 2) + [1] * (nb_train_samples / 2))
-    validation_data = np.load(open('bottleneck_features_validation.npy', 'rb'))
-    #validation_labels = np.array([0] * (nb_validation_samples / 2) + [1] * (nb_validation_samples / 2))
+    conv_4 = ZeroPadding2D((1,1))(conv_3)
+    conv_4 = merge([
+        Convolution2D(192,3,3,activation="relu",name='conv_4_'+str(i+1))(
+            splittensor(ratio_split=2,id_split=i)(conv_4)
+        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_4")
 
-    print train_data.shape
-    print validation_data.shape
+    conv_5 = ZeroPadding2D((1,1))(conv_4)
+    conv_5 = merge([
+        Convolution2D(128,3,3,activation="relu",name='conv_5_'+str(i+1))(
+            splittensor(ratio_split=2,id_split=i)(conv_5)
+        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_5")
 
-    train_labels = y_train
-    validation_labels =  y_test
-
-    model = util.get_top_model_for_VGG16(shape=train_data.shape[1:], nb_class=10, W_regularizer=True)
-    rms = RMSprop(lr=5e-4, rho=0.9, epsilon=1e-08, decay=0.01)
-    model.compile(optimizer=rms, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-
-    early_stopping = EarlyStopping(verbose=1, patience=20, monitor='acc')
-    model_checkpoint = ModelCheckpoint("top-model-weights.h5", save_best_only=True, save_weights_only=True, monitor='acc')
-    callbacks_list = [early_stopping, model_checkpoint]
-
-    history = model.fit(
-        train_data,
-        train_labels,
-        nb_epoch=10,
-        validation_data=(validation_data, validation_labels),
-        callbacks=callbacks_list)
-
-    y_proba = model.predict(validation_data)
-    y_pred = np_utils.probas_to_classes(y_proba)
-
-    target_names = ['class 0(BIKES)', 'class 1(CARS)', 'class 2(HORSES)','3','3','3','3','3','3','3']
-    print(classification_report(np.argmax(validation_labels,axis=1), y_pred,target_names=target_names))
-    print(confusion_matrix(np.argmax(validation_labels,axis=1), y_pred))
+    dense_1 = MaxPooling2D((3, 3), strides=(2,2),name="convpool_5")(conv_5)
 
 
+    dense_1 = Flatten(name="flatten")(dense_1)
+    dense_1 = Dense(4096, activation='relu',name='dense_1')(dense_1)
+    dense_2 = Dropout(0.5)(dense_1)
+    dense_2 = Dense(4096, activation='relu',name='dense_2')(dense_2)
+    dense_3 = Dropout(0.5)(dense_2)
+    dense_3 = Dense(nb_classes,name='dense_3')(dense_3)
+    prediction = Activation("softmax",name="softmax")(dense_3)
+
+
+    model = Model(input=inputs, output=prediction)
+    # load the weights of the VGG16 networks
+    # (trained on ImageNet, won the ILSVRC competition in 2014)
+    # note: when there is a complete match between your model definition
+    # and your weight savefile, you can simply call model.load_weights(filename)
+    model.load_weights('../dataset/alexnet_weights.h5')
+    print('Model loaded.')
+
+    model.pop()
+    model.pop()
+
+    bottleneck_features_train = model.predict(X_train, batch_size=32)
+    np.save(open('alex_bottleneck_features_train.npy', 'wb'), bottleneck_features_train)
+
+
+    bottleneck_features_validation = model.predict(X_test, batch_size=32)
+    np.save(open('alex_bottleneck_features_validation.npy', 'wb'), bottleneck_features_validation)
+
+
+
+def train_and_evaluate_model(model, X_train, y_train, X_test, y_test):
+    opt = SGD(lr=0.01)
+    model.compile(loss = "categorical_crossentropy", optimizer = opt, metrics=['accuracy'])
+    #rms = RMSprop(lr=5e-4, rho=0.9, epsilon=1e-08, decay=0.01)
+    #model.compile(optimizer=rms, loss='categorical_crossentropy', metrics=['accuracy'])
+    Y_train = np_utils.to_categorical(y_train, nb_classes)
+    Y_test = np_utils.to_categorical(y_test, nb_classes)
+
+    print "Model loaded."
+
+    model.fit(X_train, Y_train, nb_epoch=nb_epoch, batch_size=batch_size,verbose=1)
+
+    scores = model.evaluate(X_test, Y_test, verbose=0)
+    print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
+
+    return scores
 
 if __name__ == "__main__":
     print "Loading data.."
@@ -99,6 +138,5 @@ if __name__ == "__main__":
     print X_test.shape
     print "Test train splitted !"
 
-
-    save_bottleneck_features(X_train, X_test, y_train, y_test)
-    train_top_model(y_train, y_test)
+    save_bottlebeck_features(X_train, X_test, y_train, y_test)
+    #train_top_model(y_train, y_test)

@@ -1,0 +1,65 @@
+[33mcommit ac1bbea985306ee4eb2cf3f38b97bda514690c19[m
+Author: Jack goh <jackgoh0@gmail.com>
+Date:   Sat Nov 12 13:53:35 2016 +0800
+
+    Remove finetune weights
+
+[33mcommit 28feee404918c14083a4d0a65d48ab01cfdb4c80[m
+Author: Jack goh <jackgoh0@gmail.com>
+Date:   Sat Nov 12 13:43:13 2016 +0800
+
+    Remove fully connected layer for softmax alex deep features
+
+[33mcommit 458e6ce6d2988880e869947feb54a22b715eac2b[m
+Author: Jack goh <jackgoh0@gmail.com>
+Date:   Sat Nov 12 13:22:48 2016 +0800
+
+    Fix alexnet deep features extraction bug
+
+[33mcommit aa9af29aa878c077d91e8fd377ee54aba7e992d1[m
+Author: Jack goh <jackgoh0@gmail.com>
+Date:   Fri Nov 11 18:50:32 2016 +0800
+
+    Added Alex finetune
+
+[33mcommit 34fed0a8967567d9a89e86177da6a05df5d0736a[m
+Author: Jack goh <jackgoh0@gmail.com>
+Date:   Wed Nov 9 18:40:08 2016 +0800
+
+    Added test cnn
+
+[33mcommit 523dbcb8fab07fb907987e3382fa432f2233422a[m
+Author: Jack goh <jackgoh0@gmail.com>
+Date:   Tue Nov 8 20:20:16 2016 +0800
+
+    fix error
+
+[33mcommit 439c798cc9ac7bd4548601e66f7bee439c3fc8e2[m
+Author: Jack goh <jackgoh0@gmail.com>
+Date:   Mon Nov 7 19:46:32 2016 +0800
+
+    Added deep feature CNN
+
+[33mcommit b861e21d926a6d19ace6c4175dd7d9c43d58decb[m
+Author: Jack goh <jackgoh0@gmail.com>
+Date:   Mon Nov 7 14:58:54 2016 +0800
+
+    Deep features extractioion with svm
+
+[33mcommit 216b91344724be80db99b0df2f7201224f336e6f[m
+Author: Jack Goh <jackgoh0@gmail.com>
+Date:   Mon Nov 7 01:25:28 2016 +0800
+
+    Added deep feature extraction with svm
+
+[33mcommit dec7e9de41d592b4ce6cbb5ec4273c7c7ad4c753[m
+Author: Jack goh <jackgoh0@gmail.com>
+Date:   Fri Nov 4 05:45:32 2016 -0400
+
+    Fix missing import
+
+[33mcommit 5b8f0620dbea2955cd263e467dc49da506c1c831[m
+Author: Jack goh <jackgoh0@gmail.com>
+Date:   Mon Oct 31 05:14:38 2016 -0400
+
+    Removed cifar10 example

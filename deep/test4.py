@@ -1,150 +1,126 @@
-from sklearn.cross_validation import StratifiedKFold
-from keras.datasets import cifar10
-from keras.preprocessing.image import ImageDataGenerator
+from keras.optimizers import SGD, RMSprop
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten
-from keras.layers import Convolution2D, MaxPooling2D
-from keras.optimizers import SGD
-from keras.utils import np_utils
+from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D
+from keras.layers import Activation, Dropout, Flatten, Dense
+from convnetskeras.convnets import preprocess_image_batch, convnet
+import scipy.misc
+from keras.regularizers import l2
+#from sklearn.model_selection import train_test_split
+from sklearn.cross_validation import train_test_split
 import numpy as np
-
+from sklearn import svm
 try:
     import cPickle as pickle
 except:
     import pickle
+seed = 7
+np.random.seed(seed)
+# path to the model weights file.
+weights_path = '../dataset/vgg16_weights.h5'
+top_model_weights_path = 'bottleneck_fc_model.h5'
+# dimensions of our images.
+img_width, img_height = 224, 224
+nb_classes = 10
 
-batch_size = 32
-nb_classes = 100
-nb_epoch = 10
-data_augmentation = True
-
-# input image dimensions
-img_rows, img_cols = 32, 32
-# the CIFAR10 images are RGB
-img_channels = 3
+nb_train_samples = 1340
+nb_validation_samples = 660
+nb_epoch = 200
 
 def load_data():
     # load your data using this function
-    f = open("../dataset/myfood100-32.pkl", 'rb')
-
+    f = open("../dataset/myfood10-227.pkl", 'rb')
     d = pickle.load(f)
     data = d['trainFeatures']
     labels = d['trainLabels']
     lz = d['labels']
-    data = data.reshape(data.shape[0], 3, 32, 32)
+    data = data.reshape(data.shape[0], 3, 227, 227)
     #data = data.transpose(0, 2, 3, 1)
 
     return data,labels,lz
 
-def create_model():
-    # create your model using this function
+
+def save_bottlebeck_features(X_train, X_test, y_train, y_test):
+    model = convnet('alexnetfc',weights_path="../dataset/alexnet_weights.h5", heatmap=False)
+
+    bottleneck_features_train = []
+    bottleneck_features_validation = []
+
+    j = 0
+    for i in X_train:
+        temp = X_train[j]
+        temp = temp[None, ...]
+
+        bottleneck_features_train.append(model.predict(temp, batch_size=32)[0])
+        j+1
+    bottleneck_features_train = np.array(bottleneck_features_train)
+    np.save(open('alex_bottleneck_features_train.npy', 'wb'), bottleneck_features_train)
+
+    j = 0
+    for i in X_test:
+        temp = X_train[j]
+        temp = temp[None, ...]
+        bottleneck_features_validation.append(model.predict(temp, batch_size=32)[0])
+        j+1
+    bottleneck_features_validation = np.array(bottleneck_features_validation)
+    np.save(open('alex_bottleneck_features_validation.npy', 'wb'), bottleneck_features_validation)
+
+
+    print bottleneck_features_train.shape
+    print bottleneck_features_validation.shape
+
+
+def train_top_model(y_train, y_test):
+    train_data = np.load(open('alex_bottleneck_features_train.npy' , 'rb'))
+    #train_labels = np.array([0] * (nb_train_samples / 2) + [1] * (nb_train_samples / 2))
+
+    validation_data = np.load(open('alex_bottleneck_features_validation.npy', 'rb'))
+    #validation_labels = np.array([0] * (nb_validation_samples / 2) + [1] * (nb_validation_samples / 2))
+    svm_train_data = train_data.reshape(1340,9216)
+    svm_test_data = validation_data.reshape(660,9216)
+
+    shape=train_data.shape[1:]
+
+    print "Training CNN.."
     model = Sequential()
-
-    model.add(Convolution2D(32, 3, 3, border_mode='same', input_shape=(3,32,32)))
-    model.add(Activation('relu'))
-    model.add(Convolution2D(32, 3, 3))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.25))
-
-    model.add(Convolution2D(64, 3, 3, border_mode='same'))
-    model.add(Activation('relu'))
-    model.add(Convolution2D(64, 3, 3))
-    model.add(Activation('relu'))
-    model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.25))
-
-    model.add(Flatten())
-    model.add(Dense(512))
-    model.add(Activation('relu'))
+    model.add(Flatten(name='flatten', input_shape=shape))
+    model.add(Dense(4096, activation='relu'))
     model.add(Dropout(0.5))
-    model.add(Dense(nb_classes))
-    model.add(Activation('softmax'))
+    model.add(Dense(4096, activation='relu'))
+    model.add(Dropout(0.5))
+    model.add(Dense(nb_classes,activation='softmax'))
+    #sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+    #opt = SGD(lr=0.01)
+    rms = RMSprop(lr=5e-4, rho=0.9, epsilon=1e-08, decay=0.01)
+    model.compile(optimizer=rms, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
 
-    sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-    model.compile(loss='categorical_crossentropy',
-                  optimizer=sgd,
-                  metrics=['accuracy'])
+    model.fit(train_data, y_train,
+              nb_epoch=nb_epoch, batch_size=32,
+              validation_data=(validation_data, y_test), verbose=0)
 
-    return model
-
-def train_and_evaluate_model(model, X_train, y_train, X_test, y_test):
-
-    print "Training.."
-
-    Y_train = np_utils.to_categorical(y_train, nb_classes)
-    Y_test = np_utils.to_categorical(y_test, nb_classes)
-    if not data_augmentation:
-        print('Not using data augmentation.')
-        #model.fit(X_train, Y_train,
-        #          batch_size=batch_size,
-        #          nb_epoch=nb_epoch,
-        #          validation_data=(X_test, Y_test),
-        #          shuffle=True)
-
-        model.fit(X_train, Y_train, nb_epoch=nb_epoch, batch_size=batch_size, verbose=0)
-
-        scores = model.evaluate(X_test, Y_test, verbose=0)
-        print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
+    scores = model.evaluate(validation_data, y_test, verbose=0)
+    print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
 
 
-    else:
-        print('Using real-time data augmentation.')
+    print "Training SVM.."
+    clf = svm.SVC(kernel='rbf', gamma=0.7, C=1.0)
 
-        # this will do preprocessing and realtime data augmentation
-        datagen = ImageDataGenerator(
-            featurewise_center=False,  # set input mean to 0 over the dataset
-            samplewise_center=False,  # set each sample mean to 0
-            featurewise_std_normalization=False,  # divide inputs by std of the dataset
-            samplewise_std_normalization=False,  # divide each input by its std
-            zca_whitening=False,  # apply ZCA whitening
-            rotation_range=0,  # randomly rotate images in the range (degrees, 0 to 180)
-            width_shift_range=0.1,  # randomly shift images horizontally (fraction of total width)
-            height_shift_range=0.1,  # randomly shift images vertically (fraction of total height)
-            horizontal_flip=True,  # randomly flip images
-            vertical_flip=False)  # randomly flip images
-
-        # compute quantities required for featurewise normalization
-        # (std, mean, and principal components if ZCA whitening is applied)
-        datagen.fit(X_train)
-
-        # fit the model on the batches generated by datagen.flow()
-        model.fit_generator(datagen.flow(X_train, Y_train,
-                            batch_size=batch_size),
-                            samples_per_epoch=X_train.shape[0],
-                            nb_epoch=nb_epoch,
-                            validation_data=(X_test, Y_test))
-
-        scores = model.evaluate(X_test, Y_test, verbose=0)
-        print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
-
-        print "Training SVM.."
-        clf = svm.SVC(kernel='rbf', gamma=0.7, C=1.0)
-
-        clf.fit(X_train, Y_train.ravel())
-        #y_pred = clf.predict(test_data)
-        score = clf.score(X_test, Y_test.ravel())
-        print score
-
-    return scores
+    clf.fit(svm_train_data, y_train.ravel())
+    #y_pred = clf.predict(test_data)
+    score = clf.score(svm_test_data, y_test.ravel())
+    print score
 
 if __name__ == "__main__":
-    n_folds = 2
-    cvscores = []
-    print "Loading data"
+    print "Loading data.."
     data, labels, lz = load_data()
     data = data.astype('float32')
     data /= 255
     lz = np.array(lz)
+    print "Data loaded !"
 
+    X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.33, random_state=seed)
+    print X_train.shape
+    print X_test.shape
+    print "Test train splitted !"
 
-    skf = StratifiedKFold(y=lz, n_folds=n_folds, shuffle=True)
-
-    for i, (train, test) in enumerate(skf):
-        print ("Running Fold", i+1, "/", n_folds)
-        model = None # Clearing the NN.
-        model = create_model()
-        scores = train_and_evaluate_model(model, data[train], labels[train], data[test], labels[test])
-        cvscores.append(scores[1] * 100)
-
-    print("Average acc : %.2f%% (+/- %.2f%%)" % (np.mean(cvscores), np.std(cvscores)))
+    #save_bottlebeck_features(X_train, X_test, y_train, y_test)
+    train_top_model(y_train, y_test)
