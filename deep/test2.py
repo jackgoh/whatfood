@@ -11,7 +11,6 @@ from convnetskeras.customlayers import convolution2Dgroup, crosschannelnormaliza
 from sklearn.cross_validation import train_test_split
 from sklearn.metrics import classification_report,confusion_matrix
 from keras.utils import np_utils
-from sklearn import svm
 
 import json
 import os.path
@@ -27,17 +26,22 @@ try:
 except:
     import pickle
 
-
 seed = 7
 np.random.seed(seed)
-# path to the model weights file.
-weights_path = '../dataset/alexnet_weights.h5'
-top_model_weights_path = 'bottleneck_fc_model.h5'
-img_width, img_height = 224, 224
 nb_train_samples = 1500
 nb_validation_samples = 500
 nb_class = 10
-nb_epoch = 40
+top_model_weights_path = "bottleneck_fc_model.h5"
+
+def get_layer_weights(weights_file=None, layer_name=None):
+    if not weights_file or not layer_name:
+        return None
+    else:
+        g = weights_file[layer_name]
+        weights = [g[p] for p in g]
+        print 'Weights for "{}" are loaded'.format(layer_name)
+    return weights
+
 
 def load_data():
     # load your data using this function
@@ -51,15 +55,61 @@ def load_data():
 
     return data,labels,lz
 
+''''
 def get_top_model_for_alexnet(nb_class=None, shape=None, W_regularizer=False, weights_file_path=None, input=None, output=None):
     if not output:
         inputs = Input(shape=shape)
+        x = Flatten(name='flatten')(inputs)
+    else:
+        x = Flatten(name='flatten', input_shape=shape)(output)
 
-    dense_3 = Dense(10,name='dense_3')(inputs)
+    if weights_file_path:
+        weights_file = h5.File(top_model_weights_path)
+
+    weights_1 = get_layer_weights(weights_file, 'dense_1')
+    dense_1 = Dense(4096, activation='relu',name='dense_1',weights=weights_1)(x)
+    dense_2 = Dropout(0.5)(dense_1)
+
+
+    weights_2 = get_layer_weights(weights_file, 'dense_2')
+    dense_2 = Dense(4096, activation='relu',name='dense_2',weights=weights_2)(dense_2)
+    dense_3 = Dropout(0.5)(dense_2)
+
+    weights_3 = get_layer_weights(weights_file, 'softmax')
+    dense_3 = Dense(10,name='dense_3',weights=weights_3)(dense_3)
     predictions = Activation("softmax",name="softmax")(dense_3)
     model = Model(input=input or inputs, output=predictions)
 
+
+    if weights_file:
+        weights_file.close()
+
     return model
+'''
+
+def get_top_model_for_alexnet(nb_class=None, shape=None, W_regularizer=False, weights_file_path=None, input=None, output=None):
+
+    if not output:
+        inputs = Input(shape=shape)
+        x = Flatten(name='flatten')(inputs)
+    else:
+        x = Flatten(name='flatten', input_shape=shape)(output)
+
+
+    dense_1 = Dense(4096, activation='relu',name='dense_1')(x)
+    dense_2 = Dropout(0.5)(dense_1)
+
+
+    dense_2 = Dense(4096, activation='relu',name='dense_2')(dense_2)
+    dense_3 = Dropout(0.5)(dense_2)
+
+
+    dense_3 = Dense(10,name='dense_3')(dense_3)
+    predictions = Activation("softmax",name="softmax")(dense_3)
+    model = Model(input=input, output=predictions)
+
+    return model
+
 
 def load_model(nb_class, weights_path=None):
 
@@ -111,76 +161,39 @@ def load_model(nb_class, weights_path=None):
     if weights_path:
         base_model.load_weights(weights_path)
 
-    base_model = Model(input=inputs, output=dense_2)
 
-    return base_model
+    model = Model(input=inputs, output=conv_5)
 
+    base_model = Model(input=inputs, output=conv_5)
 
-
-def save_bottlebeck_features(X_train, X_test, y_train, y_test):
-    model = load_model(nb_class=nb_class, weights_path=weights_path)
-    '''
-    j = 0
-    for i in X_train:
-        temp = X_train[j]
-        temp = temp[None, ...]
-
-        bottleneck_features_train.append(model.predict(temp, batch_size=32)[0])
-        j+1
-    bottleneck_features_train = np.array(bottleneck_features_train)
-    np.save(open('alex_bottleneck_features_train.npy', 'wb'), bottleneck_features_train)
-
-    j = 0
-    for i in X_test:
-        temp = X_train[j]
-        temp = temp[None, ...]
-        bottleneck_features_validation.append(model.predict(temp, batch_size=32)[0])
-        j+1
-    bottleneck_features_validation = np.array(bottleneck_features_validation)
-    np.save(open('alex_bottleneck_features_validation.npy', 'wb'), bottleneck_features_validation)
-    '''
-    bottleneck_features_train = model.predict(X_train, batch_size=32)
-    np.save(open('alex_bottleneck_features_train.npy', 'wb'), bottleneck_features_train)
+    for layer in base_model.layers:
+        layer.trainable = False
 
 
-    bottleneck_features_validation = model.predict(X_test, batch_size=32)
-    np.save(open('alex_bottleneck_features_validation.npy', 'wb'), bottleneck_features_validation)
-    print "deep features extracted (x,4096)"
+    model = get_top_model_for_alexnet(
+        shape=base_model.output_shape[1:],
+        nb_class=nb_class,
+        #weights_file_path="bottleneck_fc_model.h5",
+        input=base_model.input,
+        output=base_model.output)
 
+    return model
 
-def train_top_model(y_train, y_test):
-    X_train = np.load(open('alex_bottleneck_features_train.npy' , 'rb'))
-    X_test = np.load(open('alex_bottleneck_features_validation.npy', 'rb'))
-
-    #svm_train_data = X_train.reshape(nb_train_samples,9216)
-    #svm_test_data = X_test.reshape(nb_validation_samples,9216)
-
-    print "Training SVM.."
-    clf = svm.SVC(kernel='rbf', gamma=0.7, C=1.0)
-
-    clf.fit(X_train, y_train.ravel())
-    #y_pred = clf.predict(test_data)
-    score = clf.score(X_test, y_test.ravel())
-    print("%s: %.2f%%" % ("acc: ", score*100))
-
-
-    print "Training CNN.."
+def tune(X_train, X_test, y_train, y_test):
     y_train = np_utils.to_categorical(y_train, nb_class)
     y_test = np_utils.to_categorical(y_test, nb_class)
 
-    shape=X_train.shape[1:]
-
-    model = get_top_model_for_alexnet(
-        shape=shape,
-        nb_class=nb_class)
+    model = load_model(nb_class=nb_class, weights_path="../dataset/alexnet_weights.h5")
 
     model.compile(
         loss='categorical_crossentropy',
         optimizer=SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True),
         metrics=['accuracy'])
 
+    print "Fine-tuning CNN.."
+
     model.fit(X_train, y_train,
-              nb_epoch=100, batch_size=32,verbose=1)
+              nb_epoch=100, batch_size=32,verbose=0)
 
     scores = model.evaluate(X_test, y_test, verbose=0)
     print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
@@ -188,24 +201,37 @@ def train_top_model(y_train, y_test):
     y_proba = model.predict(X_test)
     y_pred = np_utils.probas_to_classes(y_proba)
 
-    target_names = ['class 0(BIKES)', 'class 1(CARS)', 'class 2(HORSES)', 'class 2(HORSES)', 'class 2(HORSES)', 'class 2(HORSES)', 'class 2(HORSES)', 'class 2(HORSES)', 'class 2(HORSES)', 'class 2(HORSES)']
+    target_names = ['AisKacang' , 'AngKuKueh' , 'ApamBalik' , 'Asamlaksa' , 'Bahulu' , 'Bakkukteh',
+         'BananaLeafRice' , 'Bazhang' , 'BeefRendang' , 'BingkaUbi' , 'Buburchacha',
+         'Buburpedas' , 'Capati' , 'Cendol' , 'ChaiTowKuay' , 'CharKuehTiao' , 'CharSiu',
+         'CheeCheongFun' , 'ChiliCrab' , 'Chweekueh' , 'ClayPotRice' , 'CucurUdang',
+         'CurryLaksa' , 'CurryPuff' , 'Dodol' , 'Durian' , 'DurianCrepe' , 'FishHeadCurry',
+         'Guava' , 'HainaneseChickenRice' , 'HokkienMee' , 'Huatkuih' , 'IkanBakar',
+         'Kangkung' , 'KayaToast' , 'Keklapis' , 'Ketupat' , 'KuihDadar' , 'KuihLapis',
+         'KuihSeriMuka' , 'Langsat' , 'Lekor' , 'Lemang' , 'LepatPisang' , 'LorMee',
+         'Maggi goreng' , 'Mangosteen' , 'MeeGoreng' , 'MeeHoonKueh' , 'MeeHoonSoup',
+         'MeeJawa' , 'MeeRebus' , 'MeeRojak' , 'MeeSiam' , 'Murtabak' , 'Murukku',
+         'NasiGorengKampung' , 'NasiImpit' , 'Nasikandar' , 'Nasilemak' , 'Nasipattaya',
+         'Ondehondeh' , 'Otakotak' , 'OysterOmelette' , 'PanMee' , 'PineappleTart',
+         'PisangGoreng' , 'Popiah' , 'PrawnMee' , 'Prawnsambal' , 'Puri' , 'PutuMayam',
+         'PutuPiring' , 'Rambutan' , 'Rojak' , 'RotiCanai' , 'RotiJala' , 'RotiJohn',
+         'RotiNaan' , 'RotiTissue' , 'SambalPetai' , 'SambalUdang' , 'Satay' , 'Sataycelup',
+         'SeriMuka' , 'SotoAyam' , 'TandooriChicken' , 'TangYuan' , 'TauFooFah',
+         'TauhuSumbat' , 'Thosai' , 'TomYumSoup' , 'Wajik' , 'WanTanMee' , 'WaTanHo' , 'Wonton',
+         'YamCake' , 'YongTauFu' , 'Youtiao' , 'Yusheng']
+
     print(classification_report(np.argmax(y_test,axis=1), y_pred,target_names=target_names))
     print(confusion_matrix(np.argmax(y_test,axis=1), y_pred))
 
-    model.save_weights(top_model_weights_path)
+    model.save_weights("alex_finetune_weights.h5")
 
-if __name__ == "__main__":
-    print "Loading data.."
-    data, labels, lz = load_data()
-    data = data.astype('float32')
-    data /= 255
-    lz = np.array(lz)
-    print "Data loaded !"
 
-    X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.25)
-    print X_train.shape
-    print X_test.shape
-    print "Test train splitted !"
+print "Loading data.."
+data, labels, lz = load_data()
+data = data.astype('float32')
+data /= 255
+lz = np.array(lz)
+print "Data loaded !"
 
-    save_bottlebeck_features(X_train, X_test, y_train, y_test)
-    train_top_model(y_train, y_test)
+X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.25)
+tune(X_train, X_test, y_train, y_test)
