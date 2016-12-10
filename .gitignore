@@ -3,5 +3,6 @@
 *.npy
 *.xlsx
 *.py~
+*.pyc
 /dataset/*
 .ipynb_checkpoints/*
