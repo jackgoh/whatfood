@@ -1,170 +1,210 @@
-import os
-import h5py
+from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D
+from keras.layers import Flatten, Dense, Dropout
+from keras.layers import Input
+from keras.models import Model
+from keras import regularizers
+from KerasLayers.Custom_layers import LRN2D
+from keras.optimizers import SGD,RMSprop
+
 from sklearn.cross_validation import StratifiedKFold
-from keras.datasets import cifar10
-from keras.preprocessing.image import ImageDataGenerator
-from keras.models import Sequential, Model
-from keras.layers import Flatten, Dense, Dropout, Reshape, Permute, Activation, \
-Input, merge
-from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
-
-from convnetskeras.customlayers import convolution2Dgroup, crosschannelnormalization, \
-splittensor, Softmax4D
-
-from keras.layers import Convolution2D, MaxPooling2D
-from keras.optimizers import SGD
 from keras.utils import np_utils
+
+import hickle as hkl
 import numpy as np
 
-try:
-    import cPickle as pickle
-except:
-    import pickle
+# global constants
+NB_CLASS = 10       # number of classes
+LEARNING_RATE = 0.0001
+MOMENTUM = 0.9
+ALPHA = 0.0001
+BETA = 0.75
+GAMMA = 0.1
+DROPOUT = 0.5
+WEIGHT_DECAY = 0.0005
+LRN2D_norm = True       # whether to use batch normalization
+# Theano - 'th' (channels, width, height)
+# Tensorflow - 'tf' (width, height, channels)
+DIM_ORDERING = 'th'
 
-batch_size = 32
-nb_classes = 100
-nb_epoch = 100
-data_augmentation = False
 
-# input image dimensions
-img_rows, img_cols = 227,227
-img_channels = 3
+def conv2D_lrn2d(x, nb_filter, nb_row, nb_col,
+                 border_mode='same', subsample=(1, 1),
+                 activation='relu', LRN2D_norm=True,
+                 weight_decay=WEIGHT_DECAY, dim_ordering=DIM_ORDERING):
+    '''
+        Info:
+            Function taken from the Inceptionv3.py script keras github
+            Utility function to apply to a tensor a module Convolution + lrn2d
+            with optional weight decay (L2 weight regularization).
+    '''
+    if weight_decay:
+        W_regularizer = regularizers.l2(weight_decay)
+        b_regularizer = regularizers.l2(weight_decay)
+    else:
+        W_regularizer = None
+        b_regularizer = None
+
+    x = Convolution2D(nb_filter, nb_row, nb_col,
+                      subsample=subsample,
+                      activation=activation,
+                      border_mode=border_mode,
+                      W_regularizer=W_regularizer,
+                      b_regularizer=b_regularizer,
+                      bias=False,
+                      dim_ordering=dim_ordering)(x)
+    x = ZeroPadding2D(padding=(1, 1), dim_ordering=DIM_ORDERING)(x)
+
+    if LRN2D_norm:
+
+        x = LRN2D(alpha=ALPHA, beta=BETA)(x)
+        x = ZeroPadding2D(padding=(1, 1), dim_ordering=DIM_ORDERING)(x)
+
+    return x
+
+
+def create_model(weights_path=None):
+    # Define image input layer
+    if DIM_ORDERING == 'th':
+        INP_SHAPE = (3, 224, 224)  # 3 - Number of RGB Colours
+        img_input = Input(shape=INP_SHAPE)
+        CONCAT_AXIS = 1
+    elif DIM_ORDERING == 'tf':
+        INP_SHAPE = (224, 224, 3)  # 3 - Number of RGB Colours
+        img_input = Input(shape=INP_SHAPE)
+        CONCAT_AXIS = 3
+    else:
+        raise Exception('Invalid dim ordering: ' + str(DIM_ORDERING))
+
+    # Channel 1 - Convolution Net Layer 1
+    x = conv2D_lrn2d(
+        img_input, 3, 11, 11, subsample=(
+            1, 1), border_mode='same')
+    x = MaxPooling2D(
+        strides=(
+            4, 4), pool_size=(
+                4, 4), dim_ordering=DIM_ORDERING)(x)
+    x = ZeroPadding2D(padding=(1, 1), dim_ordering=DIM_ORDERING)(x)
+
+    # Channel 1 - Convolution Net Layer 2
+    x = conv2D_lrn2d(x, 48, 55, 55, subsample=(1, 1), border_mode='same')
+    x = MaxPooling2D(
+        strides=(
+            2, 2), pool_size=(
+                2, 2), dim_ordering=DIM_ORDERING)(x)
+    x = ZeroPadding2D(padding=(1, 1), dim_ordering=DIM_ORDERING)(x)
+
+    # Channel 1 - Convolution Net Layer 3
+    x = conv2D_lrn2d(x, 128, 27, 27, subsample=(1, 1), border_mode='same')
+    x = MaxPooling2D(
+        strides=(
+            2, 2), pool_size=(
+                2, 2), dim_ordering=DIM_ORDERING)(x)
+    x = ZeroPadding2D(padding=(1, 1), dim_ordering=DIM_ORDERING)(x)
+
+    # Channel 1 - Convolution Net Layer 4
+    x = conv2D_lrn2d(x, 192, 13, 13, subsample=(1, 1), border_mode='same')
+    x = ZeroPadding2D(padding=(1, 1), dim_ordering=DIM_ORDERING)(x)
+
+    # Channel 1 - Convolution Net Layer 5
+    x = conv2D_lrn2d(x, 192, 13, 13, subsample=(1, 1), border_mode='same')
+    x = ZeroPadding2D(padding=(1, 1), dim_ordering=DIM_ORDERING)(x)
+
+    # Channel 1 - Cov Net Layer 6
+    x = conv2D_lrn2d(x, 128, 27, 27, subsample=(1, 1), border_mode='same')
+    x = MaxPooling2D(
+        strides=(
+            2, 2), pool_size=(
+                2, 2), dim_ordering=DIM_ORDERING)(x)
+    x = ZeroPadding2D(padding=(1, 1), dim_ordering=DIM_ORDERING)(x)
+
+    # Channel 1 - Cov Net Layer 7
+    x = Flatten()(x)
+    x = Dense(2048, activation='relu')(x)
+    x = Dropout(DROPOUT)(x)
+
+    # Channel 1 - Cov Net Layer 8
+    x = Dense(2048, activation='relu')(x)
+    x = Dropout(DROPOUT)(x)
+
+    # Final Channel - Cov Net 9
+    prediction = Dense(output_dim=NB_CLASS,
+              activation='softmax')(x)
+
+    if weights_path:
+        x.load_weights(weights_path)
+
+    model = Model(input=img_input,
+                  output=prediction)
+
+    return model
+
+
+def check_print():
+    # Create the Model
+    x, img_input, CONCAT_AXIS, INP_SHAPE, DIM_ORDERING = create_model()
+
+    # Create a Keras Model - Functional API
+    model = Model(input=img_input,
+                  output=[x])
+    model.summary()
+
+    # Save a PNG of the Model Build
+
+    model.compile(optimizer='rmsprop',
+                  loss='categorical_crossentropy')
+    print "Check print"
 
 def load_data():
     # load your data using this function
-    f = open("../dataset/myfood10-227.pkl", 'rb')
-
-    d = pickle.load(f)
+    d = hkl.load('../dataset/myfood4-224.hkl')
     data = d['trainFeatures']
     labels = d['trainLabels']
     lz = d['labels']
-    data = data.reshape(data.shape[0], 3, 227, 227)
+    data = data.reshape(data.shape[0], 3, 224, 224)
     #data = data.transpose(0, 2, 3, 1)
 
     return data,labels,lz
 
-def create_model(weights_path=None, heatmap=False):
-
-    inputs = Input(shape=(3,227,227))
-
-    conv_1 = Convolution2D(96, 11, 11,subsample=(4,4),activation='relu',
-                           name='conv_1')(inputs)
-
-    conv_2 = MaxPooling2D((3, 3), strides=(2,2))(conv_1)
-    conv_2 = crosschannelnormalization(name="convpool_1")(conv_2)
-    conv_2 = ZeroPadding2D((2,2))(conv_2)
-    conv_2 = merge([
-        Convolution2D(128,5,5,activation="relu",name='conv_2_'+str(i+1))(
-            splittensor(ratio_split=2,id_split=i)(conv_2)
-        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_2")
-
-    conv_3 = MaxPooling2D((3, 3), strides=(2, 2))(conv_2)
-    conv_3 = crosschannelnormalization()(conv_3)
-    conv_3 = ZeroPadding2D((1,1))(conv_3)
-    conv_3 = Convolution2D(384,3,3,activation='relu',name='conv_3')(conv_3)
-
-    conv_4 = ZeroPadding2D((1,1))(conv_3)
-    conv_4 = merge([
-        Convolution2D(192,3,3,activation="relu",name='conv_4_'+str(i+1))(
-            splittensor(ratio_split=2,id_split=i)(conv_4)
-        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_4")
-
-    conv_5 = ZeroPadding2D((1,1))(conv_4)
-    conv_5 = merge([
-        Convolution2D(128,3,3,activation="relu",name='conv_5_'+str(i+1))(
-            splittensor(ratio_split=2,id_split=i)(conv_5)
-        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_5")
-
-    dense_1 = MaxPooling2D((3, 3), strides=(2,2),name="convpool_5")(conv_5)
-
-
-    dense_1 = Flatten(name="flatten")(dense_1)
-    dense_1 = Dense(4096, activation='relu',name='dense_1')(dense_1)
-    dense_2 = Dropout(0.5)(dense_1)
-    dense_2 = Dense(4096, activation='relu',name='dense_2')(dense_2)
-    dense_3 = Dropout(0.5)(dense_2)
-    dense_3 = Dense(nb_classes,name='dense_3')(dense_3)
-    prediction = Activation("softmax",name="softmax")(dense_3)
-
-
-    model = Model(input=inputs, output=prediction)
-
-    if weights_path:
-        model.load_weights(weights_path)
-
-    sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-    model.compile(loss='categorical_crossentropy',
-                  optimizer=sgd,
-                  metrics=['accuracy'])
-
-    return model
-
 def train_and_evaluate_model(model, X_train, y_train, X_test, y_test):
+    opt = SGD(lr=0.0001)
+    model.compile(loss = "categorical_crossentropy", optimizer = opt, metrics=['accuracy'])
+    #rms = RMSprop(lr=5e-4, rho=0.9, epsilon=1e-08, decay=0.01)
+    #model.compile(optimizer=rms, loss='categorical_crossentropy', metrics=['accuracy'])
 
-    print "Training.."
+    Y_train = np_utils.to_categorical(y_train, NB_CLASS)
+    Y_test = np_utils.to_categorical(y_test, NB_CLASS)
 
-    Y_train = np_utils.to_categorical(y_train, nb_classes)
-    Y_test = np_utils.to_categorical(y_test, nb_classes)
-    if not data_augmentation:
-        print('Not using data augmentation.')
-        #model.fit(X_train, Y_train,
-        #          batch_size=batch_size,
-        #          nb_epoch=nb_epoch,
-        #          validation_data=(X_test, Y_test),
-        #          shuffle=True)
-        
-        model.fit(X_train, Y_train, nb_epoch=nb_epoch, batch_size=batch_size)
+    print "Training CNN.."
+    hist = model.fit(X_train, Y_train, nb_epoch=250, validation_data=(X_test, Y_test),batch_size=32,verbose=1)
+    #visualize_loss(hist)
+    model.save_weights("food10x_scratch_weights.h5")
 
-        scores = model.evaluate(X_test, Y_test)
-        print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
-
-
-    else:
-        print('Using real-time data augmentation.')
-
-        # this will do preprocessing and realtime data augmentation
-        datagen = ImageDataGenerator(
-            featurewise_center=True,
-            featurewise_std_normalization=True,
-            rotation_range=20,
-            width_shift_range=0.2,
-            height_shift_range=0.2,
-            horizontal_flip=True)
-
-        # compute quantities required for featurewise normalization
-        # (std, mean, and principal components if ZCA whitening is applied)
-        datagen.fit(X_train)
-
-        # fit the model on the batches generated by datagen.flow()
-        model.fit_generator(datagen.flow(X_train, Y_train,
-                            batch_size=batch_size),
-                            samples_per_epoch=X_train.shape[0],
-                            nb_epoch=nb_epoch)
-
-        scores = model.evaluate(X_test, Y_test)
-        print("%s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
-
+    scores = model.evaluate(X_test, Y_test, verbose=1)
+    print("Softmax %s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
     return scores
+
 
 if __name__ == "__main__":
     n_folds = 2
     cvscores = []
-    data_augmentation = True
     print "Loading data.."
     data, labels, lz = load_data()
     print "Data loaded !"
     data = data.astype('float32')
     data /= 255
     lz = np.array(lz)
+    total_scores = 0
 
 
-    skf = StratifiedKFold(y=lz, n_folds=n_folds, shuffle=True)
+    skf = StratifiedKFold(y=lz, n_folds=n_folds, shuffle=False)
 
     for i, (train, test) in enumerate(skf):
-        print ("Running Fold", i+1, "/", n_folds)
+        print ("Running Fold %d / %d" % (i+1, n_folds))
         model = None # Clearing the NN.
-        model = create_model(weights_path=None, heatmap=False)
+        #model = create_model(weights_path=None, heatmap=False)
+        model = create_model(weights_path=None)
         scores = train_and_evaluate_model(model, data[train], labels[train], data[test], labels[test])
-        cvscores.append(scores[1] * 100)
+        #print "Score for fold ", i+1, "= ", scores*100
+        total_scores = total_scores + scores
 
-    print("Average acc : %.2f%% (+/- %.2f%%)" % (np.mean(cvscores), np.std(cvscores)))
+    print("Average acc : %.2f%%" % (total_scores/n_folds*100))
