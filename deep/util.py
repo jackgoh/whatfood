@@ -12,21 +12,41 @@ from keras.preprocessing import image
 from keras.applications.imagenet_utils import preprocess_input
 from keras.models import Model
 from keras.regularizers import l2
-from keras.layers import Flatten, Dense, Dropout, Input
-from keras.applications.vgg16 import VGG16
-
+from keras.layers import Flatten, Dense, Dropout, Reshape, Permute, Activation, \
+    Input, merge
+from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
+from convnetskeras.customlayers import convolution2Dgroup, crosschannelnormalization, \
+    splittensor, Softmax4D
+import hickle as hkl
 import config
 
+def load_data():
+    # load your data using this function
+    d = hkl.load(config.data_path)
+    data = d['trainFeatures']
+    labels = d['trainLabels']
+    lz = d['labels']
+    data = data.reshape(data.shape[0], 3, 227, 227)
+    #data = data.transpose(0, 2, 3, 1)
+    return data,labels,lz
 
-def save_history(history, prefix):
+def save_history(history, prefix, fold_count):
     if 'acc' not in history.history:
         return
 
-    img_path = '{}/{}-%s.jpg'.format(config.plots_dir, prefix)
+    train_loss = history.history['loss']
+    val_loss=history.history['val_loss']
+    train_acc=history.history['acc']
+    val_acc=history.history['val_acc']
+
+    img_path = '{}/{}-%s.jpg'.format("hist", prefix)
+    # save hist to numpy
+    data={'train_loss': train_loss, 'val_loss':  val_loss, 'train_acc': train_acc, 'val_acc': val_acc }
+    np.save(open('alex_finetune567_hist'+ str(fold_count) +'.npy', 'wb'), data)
 
     # summarize history for accuracy
-    plt.plot(history.history['acc'])
-    plt.plot(history.history['val_acc'])
+    plt.plot(train_acc)
+    plt.plot(val_acc)
     plt.title('model accuracy')
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
@@ -35,8 +55,8 @@ def save_history(history, prefix):
     plt.close()
 
     # summarize history for loss
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
+    plt.plot(train_loss)
+    plt.plot(val_loss)
     plt.title('model loss')
     plt.ylabel('loss')
     plt.xlabel('epoch')
@@ -44,133 +64,189 @@ def save_history(history, prefix):
     plt.savefig(img_path % 'loss')
     plt.close()
 
+def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.jet):
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(100)
+    plt.xticks(tick_marks, ['AisKacang' , 'AngKuKueh' , 'ApamBalik' , 'Asamlaksa' , 'Bahulu' , 'Bakkukteh',
+         'BananaLeafRice' , 'Bazhang' , 'BeefRendang' , 'BingkaUbi' , 'Buburchacha',
+         'Buburpedas' , 'Capati' , 'Cendol' , 'ChaiTowKuay' , 'CharKuehTiao' , 'CharSiu',
+         'CheeCheongFun' , 'ChiliCrab' , 'Chweekueh' , 'ClayPotRice' , 'CucurUdang',
+         'CurryLaksa' , 'CurryPuff' , 'Dodol' , 'Durian' , 'DurianCrepe' , 'FishHeadCurry',
+         'Guava' , 'HainaneseChickenRice' , 'HokkienMee' , 'Huatkuih' , 'IkanBakar',
+         'Kangkung' , 'KayaToast' , 'Keklapis' , 'Ketupat' , 'KuihDadar' , 'KuihLapis',
+         'KuihSeriMuka' , 'Langsat' , 'Lekor' , 'Lemang' , 'LepatPisang' , 'LorMee',
+         'Maggi goreng' , 'Mangosteen' , 'MeeGoreng' , 'MeeHoonKueh' , 'MeeHoonSoup',
+         'MeeJawa' , 'MeeRebus' , 'MeeRojak' , 'MeeSiam' , 'Murtabak' , 'Murukku',
+         'NasiGorengKampung' , 'NasiImpit' , 'Nasikandar' , 'Nasilemak' , 'Nasipattaya',
+         'Ondehondeh' , 'Otakotak' , 'OysterOmelette' , 'PanMee' , 'PineappleTart',
+         'PisangGoreng' , 'Popiah' , 'PrawnMee' , 'Prawnsambal' , 'Puri' , 'PutuMayam',
+         'PutuPiring' , 'Rambutan' , 'Rojak' , 'RotiCanai' , 'RotiJala' , 'RotiJohn',
+         'RotiNaan' , 'RotiTissue' , 'SambalPetai' , 'SambalUdang' , 'Satay' , 'Sataycelup',
+         'SeriMuka' , 'SotoAyam' , 'TandooriChicken' , 'TangYuan' , 'TauFooFah',
+         'TauhuSumbat' , 'Thosai' , 'TomYumSoup' , 'Wajik' , 'WanTanMee' , 'WaTanHo' , 'Wonton',
+         'YamCake' , 'YongTauFu' , 'Youtiao' , 'Yusheng'], rotation=45)
+    plt.yticks(tick_marks, ['AisKacang' , 'AngKuKueh' , 'ApamBalik' , 'Asamlaksa' , 'Bahulu' , 'Bakkukteh',
+         'BananaLeafRice' , 'Bazhang' , 'BeefRendang' , 'BingkaUbi' , 'Buburchacha',
+         'Buburpedas' , 'Capati' , 'Cendol' , 'ChaiTowKuay' , 'CharKuehTiao' , 'CharSiu',
+         'CheeCheongFun' , 'ChiliCrab' , 'Chweekueh' , 'ClayPotRice' , 'CucurUdang',
+         'CurryLaksa' , 'CurryPuff' , 'Dodol' , 'Durian' , 'DurianCrepe' , 'FishHeadCurry',
+         'Guava' , 'HainaneseChickenRice' , 'HokkienMee' , 'Huatkuih' , 'IkanBakar',
+         'Kangkung' , 'KayaToast' , 'Keklapis' , 'Ketupat' , 'KuihDadar' , 'KuihLapis',
+         'KuihSeriMuka' , 'Langsat' , 'Lekor' , 'Lemang' , 'LepatPisang' , 'LorMee',
+         'Maggi goreng' , 'Mangosteen' , 'MeeGoreng' , 'MeeHoonKueh' , 'MeeHoonSoup',
+         'MeeJawa' , 'MeeRebus' , 'MeeRojak' , 'MeeSiam' , 'Murtabak' , 'Murukku',
+         'NasiGorengKampung' , 'NasiImpit' , 'Nasikandar' , 'Nasilemak' , 'Nasipattaya',
+         'Ondehondeh' , 'Otakotak' , 'OysterOmelette' , 'PanMee' , 'PineappleTart',
+         'PisangGoreng' , 'Popiah' , 'PrawnMee' , 'Prawnsambal' , 'Puri' , 'PutuMayam',
+         'PutuPiring' , 'Rambutan' , 'Rojak' , 'RotiCanai' , 'RotiJala' , 'RotiJohn',
+         'RotiNaan' , 'RotiTissue' , 'SambalPetai' , 'SambalUdang' , 'Satay' , 'Sataycelup',
+         'SeriMuka' , 'SotoAyam' , 'TandooriChicken' , 'TangYuan' , 'TauFooFah',
+         'TauhuSumbat' , 'Thosai' , 'TomYumSoup' , 'Wajik' , 'WanTanMee' , 'WaTanHo' , 'Wonton',
+         'YamCake' , 'YongTauFu' , 'Youtiao' , 'Yusheng'])
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
 
-def get_samples_info():
-    """Walks through the train and valid directories
-    and returns number of images"""
-    white_list_formats = {'png', 'jpg', 'jpeg', 'bmp'}
-    dirs_info = {config.train_dir: 0, config.validation_dir: 0}
-    for d in dirs_info:
-        iglob_iter = glob.iglob(d + '**/*.*')
-        for i in iglob_iter:
-            filename, file_extension = os.path.splitext(i)
-            if file_extension[1:] in white_list_formats:
-                dirs_info[d] += 1
+def get_top_model_for_alexnet(nb_class=None, shape=None, weights_file_path=None, input=None, output=None):
+    x = ZeroPadding2D((1,1))(output)
+    conv_5 = merge([
+        Convolution2D(128,3,3,activation="relu",name='conv_5_'+str(i+1),W_regularizer=l2(0.0002))(
+            splittensor(ratio_split=2,id_split=i)(x)
+        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_5")
 
-    return dirs_info
+    conv_5 = MaxPooling2D((3, 3), strides=(2,2),name="convpool_5")(conv_5)
 
 
-def get_layer_weights(weights_file=None, layer_name=None):
-    if not weights_file or not layer_name:
-        return None
-    else:
-        g = weights_file[layer_name]
-        weights = [g[p] for p in g]
-        print 'Weights for "{}" are loaded'.format(layer_name)
-        return weights
+    dense_1 = Flatten(name="flatten")(conv_5)
+
+    dense_1 = Dense(4096, activation='relu',name='dense_1')(dense_1)
+    dense_2 = Dropout(0.5)(dense_1)
 
 
-def get_top_model_for_VGG16(nb_class=None, shape=None, W_regularizer=False, weights_file_path=None, input=None, output=None):
-    if not output:
-        inputs = Input(shape=shape)
-        x = Flatten(name='flatten')(inputs)
-    else:
-        x = Flatten(name='flatten', input_shape=shape)(output)
+    dense_2 = Dense(4096, activation='relu',name='dense_2')(dense_2)
+    dense_3 = Dropout(0.5)(dense_2)
 
-    #############################
-    weights_file = None
-    if weights_file_path:
-        weights_file = h5.File(config.top_model_weights_path)
 
-    #############################
-    if W_regularizer:
-        W_regularizer = l2(1e-2)
+    dense_3 = Dense(nb_class,name='dense_3')(dense_3)
+    predictions = Activation("softmax",name="softmax")(dense_3)
+    model = Model(input=input, output=predictions)
 
-    weights_1 = get_layer_weights(weights_file, 'fc1')
-    x = Dense(4096, activation='relu', W_regularizer=W_regularizer, weights=weights_1, name='fc1')(x)
-    #############################
-
-    x = Dropout(0.6)(x)
-
-    #############################
-    if W_regularizer:
-        W_regularizer = l2(1e-2)
-
-    weights_2 = get_layer_weights(weights_file, 'fc2')
-    x = Dense(4096, activation='relu', W_regularizer=W_regularizer, weights=weights_2, name='fc2')(x)
-    #############################
-
-    x = Dropout(0.6)(x)
-
-    #############################
-    weights_3 = get_layer_weights(weights_file, 'predictions')
-    predictions = Dense(nb_class, activation='softmax', weights=weights_3, name='predictions')(x)
-    #############################
-
-    if weights_file:
-        weights_file.close()
-
-    model = Model(input=input or inputs, output=predictions)
     return model
 
+def load_alexnet_model(weights_path=None, nb_class=None):
 
-def load_model(nb_class, weights_path=None):
-    base_model = VGG16(weights='imagenet', include_top=False, input_tensor=Input(shape=(3,) + config.img_size))
+    inputs = Input(shape=(3,227,227))
+    conv_1 = Convolution2D(96, 11, 11,subsample=(4,4),
+                            activation='relu',
+                            name='conv_1',
+                            W_regularizer=l2(0.0002))(inputs)
 
-    # set base_model layers (up to the last conv block)
-    # to non-trainable (weights will not be updated)
+    conv_2 = MaxPooling2D((3, 3), strides=(2,2))(conv_1)
+    conv_2 = crosschannelnormalization(name="convpool_1")(conv_2)
+    conv_2 = ZeroPadding2D((2,2))(conv_2)
+    conv_2 = merge([
+        Convolution2D(128,5,5,
+                      activation="relu",
+                      name='conv_2_'+str(i+1),
+                      W_regularizer=l2(0.0002))(
+            splittensor(ratio_split=2,id_split=i)(conv_2)
+        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_2")
+    conv_3 = MaxPooling2D((3, 3), strides=(2, 2))(conv_2)
+    conv_3 = crosschannelnormalization()(conv_3)
+    conv_3 = ZeroPadding2D((1,1))(conv_3)
+    conv_3 = Convolution2D(384,3,3,activation='relu',name='conv_3', W_regularizer=l2(0.0002))(conv_3)
+
+    conv_4 = ZeroPadding2D((1,1))(conv_3)
+    conv_4 = merge([
+        Convolution2D(192,3,3,activation="relu",name='conv_4_'+str(i+1),W_regularizer=l2(0.0002))(
+            splittensor(ratio_split=2,id_split=i)(conv_4)
+        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_4")
+
+    conv_5 = ZeroPadding2D((1,1))(conv_4)
+    conv_5 = merge([
+        Convolution2D(128,3,3,activation="relu",name='conv_5_'+str(i+1),W_regularizer=l2(0.0002))(
+            splittensor(ratio_split=2,id_split=i)(conv_5)
+        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_5")
+
+    conv_5 = MaxPooling2D((3, 3), strides=(2,2),name="convpool_5")(conv_5)
+
+    dense_1 = Flatten(name="flatten")(conv_5)
+    dense_1 = Dense(4096, activation='relu',name='dense_1')(dense_1)
+    dense_2 = Dropout(0.5)(dense_1)
+    dense_2 = Dense(4096, activation='relu',name='dense_2')(dense_2)
+    dense_3 = Dropout(0.5)(dense_2)
+    dense_3 = Dense(nb_class,name='dense_3')(dense_3)
+    prediction = Activation("softmax",name="softmax")(dense_3)
+
+    base_model = Model(input=inputs, output=prediction)
+    base_model.load_weights(weights_path)
+    base_model = Model(input=inputs, output=conv_4)
+
     for layer in base_model.layers:
         layer.trainable = False
 
-    model = get_top_model_for_VGG16(
+
+    model = get_top_model_for_alexnet(
         shape=base_model.output_shape[1:],
         nb_class=nb_class,
-        weights_file_path=weights_path,
+        #weights_file_path="bottleneck_fc_model.h5",
         input=base_model.input,
         output=base_model.output)
 
     return model
 
+def load_svm_alex_model(weights_path=None, nb_class=None):
 
-def load_img(path):
-    img = image.load_img(path, target_size=config.img_size)
-    x = image.img_to_array(img)
-    x = np.expand_dims(x, axis=0)
-    return preprocess_input(x)[0]
+    inputs = Input(shape=(3,227,227))
 
+    conv_1 = Convolution2D(96, 11, 11,subsample=(4,4),activation='relu',
+                           name='conv_1')(inputs)
 
-def get_classes_from_train_dir():
-    """Returns classes based on directories in train directory"""
-    d = config.train_dir
-    return sorted([o for o in os.listdir(d) if os.path.isdir(os.path.join(d, o))])
+    conv_2 = MaxPooling2D((3, 3), strides=(2,2))(conv_1)
+    conv_2 = crosschannelnormalization(name="convpool_1")(conv_2)
+    conv_2 = ZeroPadding2D((2,2))(conv_2)
+    conv_2 = merge([
+        Convolution2D(128,5,5,activation="relu",name='conv_2_'+str(i+1))(
+            splittensor(ratio_split=2,id_split=i)(conv_2)
+        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_2")
 
+    conv_3 = MaxPooling2D((3, 3), strides=(2, 2))(conv_2)
+    conv_3 = crosschannelnormalization()(conv_3)
+    conv_3 = ZeroPadding2D((1,1))(conv_3)
+    conv_3 = Convolution2D(384,3,3,activation='relu',name='conv_3')(conv_3)
 
-def override_keras_directory_iterator_next():
-    """Overrides .next method of DirectoryIterator in Keras
-      to reorder color channels for images from RGB to BGR"""
-    from keras.preprocessing.image import DirectoryIterator
+    conv_4 = ZeroPadding2D((1,1))(conv_3)
+    conv_4 = merge([
+        Convolution2D(192,3,3,activation="relu",name='conv_4_'+str(i+1))(
+            splittensor(ratio_split=2,id_split=i)(conv_4)
+        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_4")
 
-    original_next = DirectoryIterator.next
+    conv_5 = ZeroPadding2D((1,1))(conv_4)
+    conv_5 = merge([
+        Convolution2D(128,3,3,activation="relu",name='conv_5_'+str(i+1))(
+            splittensor(ratio_split=2,id_split=i)(conv_5)
+        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_5")
 
-    # do not allow to override one more time
-    if 'custom_next' in str(original_next):
-        return
-
-    def custom_next(self):
-        batch_x, batch_y = original_next(self)
-
-        batch_x = batch_x[:, ::-1, :, :]
-        return batch_x, batch_y
-
-    DirectoryIterator.next = custom_next
-
-
-def apply_mean(image_data_generator):
-    """Subtracts the VGG dataset mean"""
-    image_data_generator.mean = np.array([103.939, 116.779, 123.68], dtype=np.float32).reshape((3, 1, 1))
+    conv_5 = MaxPooling2D((3, 3), strides=(2,2),name="convpool_5")(conv_5)
 
 
-def get_classes_in_keras_format():
-    if config.classes:
-        return dict(zip(config.classes, range(len(config.classes))))
-    return None
+
+    dense_1 = Flatten(name="flatten")(conv_5)
+    dense_1 = Dense(4096, activation='relu',name='dense_1')(dense_1)
+    dense_2 = Dropout(0.5)(dense_1)
+    dense_2 = Dense(4096, activation='relu',name='dense_2')(dense_2)
+    dense_3 = Dropout(0.5)(dense_2)
+    dense_3 = Dense(nb_class,name='dense_3')(dense_3)
+    prediction = Activation("softmax",name="softmax")(dense_3)
+
+
+    base_model = Model(input=inputs, output=prediction)
+
+    if weights_path:
+        base_model.load_weights(weights_path)
+
+    base_model = Model(input=inputs, output=dense_2)
+
+    return base_model
