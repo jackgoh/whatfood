@@ -21,7 +21,7 @@ def tune(X_train, X_test, y_train, y_test):
     Y_test = np_utils.to_categorical(y_test, config.nb_class)
 
     model = None
-    model = util.load_alexnet_model_finetune567(weights_path=config.alexnet_weights_path, nb_class=config.nb_class)
+    model = util.load_alexnet_model_finetune56(weights_path=config.alexnet_weights_path, nb_class=config.nb_class)
 
     model.compile(
         loss='categorical_crossentropy',
@@ -34,7 +34,7 @@ def tune(X_train, X_test, y_train, y_test):
               nb_epoch=2000, batch_size=32,verbose=1,
               validation_data=(X_test, Y_test))
 
-    util.save_history(hist,"hist/finetune56_fold"+ str(fold_count),fold_count)
+    util.save_history(hist,"finetune56_fold"+ str(fold_count),fold_count)
 
     scores = model.evaluate(X_test, Y_test, verbose=0)
     print("Softmax %s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
