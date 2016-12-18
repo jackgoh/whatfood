@@ -109,34 +109,8 @@ def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.jet):
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
 
-def get_top_model_for_alexnet(nb_class=None, shape=None, weights_file_path=None, input=None, output=None):
-    x = ZeroPadding2D((1,1))(output)
-    conv_5 = merge([
-        Convolution2D(128,3,3,activation="relu",name='conv_5_'+str(i+1),W_regularizer=l2(0.0002))(
-            splittensor(ratio_split=2,id_split=i)(x)
-        ) for i in range(2)], mode='concat',concat_axis=1,name="conv_5")
-
-    conv_5 = MaxPooling2D((3, 3), strides=(2,2),name="convpool_5")(conv_5)
-
-
-    dense_1 = Flatten(name="flatten")(conv_5)
-
-    dense_1 = Dense(4096, activation='relu',name='dense_1')(dense_1)
-    dense_2 = Dropout(0.5)(dense_1)
-
-
-    dense_2 = Dense(4096, activation='relu',name='dense_2')(dense_2)
-    dense_3 = Dropout(0.5)(dense_2)
-
-
-    dense_3 = Dense(nb_class,name='dense_3')(dense_3)
-    predictions = Activation("softmax",name="softmax")(dense_3)
-    model = Model(input=input, output=predictions)
-
-    return model
 
 def load_alexnet_model(weights_path=None, nb_class=None):
-
     inputs = Input(shape=(3,227,227))
     conv_1 = Convolution2D(96, 11, 11,subsample=(4,4),
                             activation='relu',
@@ -164,6 +138,8 @@ def load_alexnet_model(weights_path=None, nb_class=None):
             splittensor(ratio_split=2,id_split=i)(conv_4)
         ) for i in range(2)], mode='concat',concat_axis=1,name="conv_4")
 
+
+
     conv_5 = ZeroPadding2D((1,1))(conv_4)
     conv_5 = merge([
         Convolution2D(128,3,3,activation="relu",name='conv_5_'+str(i+1),W_regularizer=l2(0.0002))(
@@ -172,18 +148,24 @@ def load_alexnet_model(weights_path=None, nb_class=None):
 
     conv_5 = MaxPooling2D((3, 3), strides=(2,2),name="convpool_5")(conv_5)
 
+
     dense_1 = Flatten(name="flatten")(conv_5)
+
     dense_1 = Dense(4096, activation='relu',name='dense_1')(dense_1)
     dense_2 = Dropout(0.5)(dense_1)
+
+
     dense_2 = Dense(4096, activation='relu',name='dense_2')(dense_2)
     dense_3 = Dropout(0.5)(dense_2)
-    dense_3 = Dense(nb_class,name='dense_3')(dense_3)
-    prediction = Activation("softmax",name="softmax")(dense_3)
 
-    base_model = Model(input=inputs, output=prediction)
-    base_model.load_weights(weights_path)
-    
-    return base_model
+    dense_3 = Dense(1000,name='dense_3')(dense_3)
+    predictions = Activation("softmax",name="softmax")(dense_3)
+    model = Model(input=inputs, output=predictions)
+    model.load_weights(weights_path)
+
+
+
+    return model
 
 def load_svm_alex_model(weights_path=None, nb_class=None):
 

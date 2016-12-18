@@ -136,7 +136,6 @@ def get_top_model_for_alexnet(nb_class=None, shape=None, weights_file_path=None,
     return model
 
 def load_alexnet_model(weights_path=None, nb_class=None):
-
     inputs = Input(shape=(3,227,227))
     conv_1 = Convolution2D(96, 11, 11,subsample=(4,4),
                             activation='relu',
