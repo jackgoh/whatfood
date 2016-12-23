@@ -1,4 +1,4 @@
-nb_class = 10
+nb_class = 100
 n_folds = 2
 learning_rate = 0.1
 weights_decay = 0.0005
