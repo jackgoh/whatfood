@@ -4,7 +4,11 @@
 *.xlsx
 *.py~
 *.pyc
+<<<<<<< HEAD
 *.hkl
 /dataset/*
 /library/*
+=======
+/dataset/*
+>>>>>>> b59d7ff... ignore hkl
 .ipynb_checkpoints/*
