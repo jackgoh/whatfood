@@ -6,4 +6,5 @@
 *.pyc
 *.hkl
 /dataset/*
+/library/*
 .ipynb_checkpoints/*

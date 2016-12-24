@@ -4,5 +4,6 @@
 *.xlsx
 *.py~
 *.pyc
+*.hkl
 /dataset/*
 .ipynb_checkpoints/*
