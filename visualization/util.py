@@ -119,42 +119,36 @@ def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.jet):
     plt.xlabel('Predicted label')
 
 def get_top_model_for_alexnet_finetune567(nb_class=None, shape=None, weights_file_path=None, input=None, output=None):
+    if weights_file_path:
+        weights_file = h5.File(weights_file_path)
+
+    weights_1 = get_layer_weights(weights_file, 'conv_5')
     x = ZeroPadding2D((1,1))(output)
     conv_5 = merge([
-        Convolution2D(128,3,3,activation="relu",name='conv_5_'+str(i+1),W_regularizer=l2(0.0002))(
+        Convolution2D(128,3,3,activation="relu",name='conv_5_'+str(i+1),W_regularizer=l2(0.0002), weights=get_layer_weights(weights_file, 'conv_5_'+str(i+1)))(
             splittensor(ratio_split=2,id_split=i)(x)
         ) for i in range(2)], mode='concat',concat_axis=1,name="conv_5")
 
     conv_5 = MaxPooling2D((3, 3), strides=(2,2),name="convpool_5")(conv_5)
-
-
     dense_1 = Flatten(name="flatten")(conv_5)
 
-    dense_1 = Dense(4096, activation='relu',name='dense_1')(dense_1)
+    weights_1 = get_layer_weights(weights_file, 'dense_1')
+    dense_1 = Dense(4096, activation='relu',name='dense_1', weights=weights_1)(dense_1)
     dense_2 = Dropout(0.5)(dense_1)
 
+    weights_2 = get_layer_weights(weights_file, 'dense_2')
+    dense_2 = Dense(4096, activation='relu',name='dense_2',weights=weights_2)(dense_1)
 
-    dense_2 = Dense(4096, activation='relu',name='dense_2')(dense_2)
-    dense_3 = Dropout(0.5)(dense_2)
-
-
-    dense_3 = Dense(nb_class,name='dense_3')(dense_3)
-    predictions = Activation("softmax",name="softmax")(dense_3)
-    model = Model(input=input, output=predictions)
+    model = Model(input=input, output=dense_2)
 
     return model
 
 def get_top_model_for_alexnet_finetune56(nb_class=None, shape=None, weights_file_path=None, input=None, output=None):
     dense_1 = Flatten(name="flatten")(output)
-
     dense_1 = Dense(4096, activation='relu',name='dense_1')(dense_1)
     dense_2 = Dropout(0.5)(dense_1)
-
-
     dense_2 = Dense(4096, activation='relu',name='dense_2')(dense_2)
     dense_3 = Dropout(0.5)(dense_2)
-
-
     dense_3 = Dense(nb_class,name='dense_3')(dense_3)
     predictions = Activation("softmax",name="softmax")(dense_3)
     model = Model(input=input, output=predictions)
@@ -183,7 +177,7 @@ def get_top_model_for_alex_finetune67(nb_class=None, shape=None, W_regularizer=F
     dense_3 = Dense(nb_class,name='dense_3',weights=weights_3)(dense_3)
     predictions = Activation("softmax",name="softmax")(dense_3)
 
-    model = Model(input=input or inputs, output=predictions)
+    model = Model(input=input or inputs, output=dense_2)
 
 
     if weights_file:
@@ -209,7 +203,7 @@ def get_top_model_for_alexnet(nb_class=None, shape=None, W_regularizer=False, we
 
 
 
-def load_alexnet_model_finetune567(weights_path=None, nb_class=None):
+def load_alexnet_model_finetune567(weights_path=None, nb_class=None, top_model_weight_path=None):
 
     inputs = Input(shape=(3,227,227))
     conv_1 = Convolution2D(96, 11, 11,subsample=(4,4),
@@ -265,13 +259,13 @@ def load_alexnet_model_finetune567(weights_path=None, nb_class=None):
     model = get_top_model_for_alexnet_finetune567(
         shape=base_model.output_shape[1:],
         nb_class=nb_class,
-        #weights_file_path="bottleneck_fc_model.h5",
+        weights_file_path=top_model_weight_path,
         input=base_model.input,
         output=base_model.output)
 
     return model
 
-def load_alexnet_model_finetune56(weights_path=None, nb_class=None, top_model_weight_path=None):
+def load_alexnet_model_finetune67(weights_path=None, nb_class=None, top_model_weight_path=None):
 
     inputs = Input(shape=(3,227,227))
     conv_1 = Convolution2D(96, 11, 11,subsample=(4,4),

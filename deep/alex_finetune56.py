@@ -34,12 +34,12 @@ def tune(X_train, X_test, y_train, y_test):
               nb_epoch=2000, batch_size=32,verbose=1,
               validation_data=(X_test, Y_test))
 
-    util.save_history(hist,"finetune56_fold"+ str(fold_count),fold_count)
+    util.save_history(hist,"alex_finetune67_fold"+ str(fold_count),fold_count)
 
     scores = model.evaluate(X_test, Y_test, verbose=0)
     print("Softmax %s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
 
-    model.save_weights("models/finetune56_weights"+ str(fold_count) +".h5")
+    model.save_weights("models/alex_finetune67_weights"+ str(fold_count) +".h5")
 
     # Clear memory
     X_train = None
