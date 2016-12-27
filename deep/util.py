@@ -351,8 +351,7 @@ def load_alex_finetune56_finetune567(nb_class, weights_path=None, top_model_weig
     conv_3 = ZeroPadding2D((1,1))(conv_3)
     conv_3 = Convolution2D(384,3,3,activation='relu',name='conv_3', W_regularizer=l2(0.0002))(conv_3)
 
-    conv_4
-    = ZeroPadding2D((1,1))(conv_3)
+    conv_4 = ZeroPadding2D((1,1))(conv_3)
     conv_4 = merge([
         Convolution2D(192,3,3,activation="relu",name='conv_4_'+str(i+1), W_regularizer=l2(0.0002))(
             splittensor(ratio_split=2,id_split=i)(conv_4)
