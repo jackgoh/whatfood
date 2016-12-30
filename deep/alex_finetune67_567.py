@@ -32,7 +32,7 @@ def save_bottleneck_svmfeatures(X_train, X_test, y_train, y_test, pretrained_wei
 # Train top model and save weithgs
 def train_top_model(X_train, X_test, y_train, y_test):
 
-    model = util.load_alex_finetune56_finetune567(nb_class=config.nb_class, weights_path=config.alexnet_weights_path,top_model_weight_path="models/alex_finetune56_weights" + str(fold_count) + ".h5")
+    model = util.load_alex_finetune56_finetune567(nb_class=config.nb_class, weights_path=config.alexnet_weights_path,top_model_weight_path="models/alex_finetune67_weights" + str(fold_count) + ".h5")
 
     print "\nTraining CNN.."
     Y_train = np_utils.to_categorical(y_train, config.nb_class)

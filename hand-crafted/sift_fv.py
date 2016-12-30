@@ -310,11 +310,11 @@ def load_feature():
     #feature = hkl.load('sift_feature.pkl')
     return feature
 
-number = 32
+number = 64
 working_folder = "../dataset/food100"
 gengmm_folder = "../dataset/food100"
-loadgmm = True
-loadfv = True
+loadgmm = False
+loadfv = False
 
 total_time = time.time()
 
