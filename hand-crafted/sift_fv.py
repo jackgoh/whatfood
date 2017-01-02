@@ -68,7 +68,7 @@ def apply_pca(image_descriptors):
     return (pca.fit_transform(image_descriptors))
 
 def generate_gmm(input_folder, N):
-    loadfeature = False
+    loadfeature = True
 
     # start count execution time
     start_time = time.time()
@@ -154,7 +154,7 @@ def train(gmm, features):
         # in each class)
         cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
         #print('Normalized confusion matrix')
-        #print(cm_normalized)
+        #print(cm_normalicd pzed)
         plt.figure()
         plot_confusion_matrix(cm_normalized, title='Normalized confusion matrix')
 
@@ -305,12 +305,12 @@ def load_fv():
 
 def load_feature():
     print "Loading SIFT Feature.."
-    with open('sift_feature.pkl', 'rb') as f:
-        feature = pickle.load(f)
-    #feature = hkl.load('sift_feature.pkl')
+    #with open('sift_feature.pkl', 'rb') as f:
+    #    feature = pickle.load(f)
+    feature = hkl.load('sift_feature.h5')
     return feature
 
-number = 64
+number = 16
 working_folder = "../dataset/food100"
 gengmm_folder = "../dataset/food100"
 loadgmm = False

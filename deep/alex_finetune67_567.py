@@ -43,11 +43,11 @@ def train_top_model(X_train, X_test, y_train, y_test):
     model.compile(
         loss='categorical_crossentropy',
         #optimizer=SGD(lr=0.00001, decay=1e-6, momentum=0.9, nesterov=True),
-        optimizer=SGD(lr=0.00001, momentum=0.9),
+        optimizer=SGD(lr=0.000001, decay=1e-6, momentum=0.9, nesterov=True),
         metrics=['accuracy'])
 
     hist = model.fit(X_train, Y_train,
-              nb_epoch=2000, batch_size=32,verbose=1,
+              nb_epoch=500, batch_size=32,verbose=1,
               validation_data=(X_test, Y_test))
 
     util.save_history(hist,"finetune56_finetune567_fold"+ str(fold_count),fold_count)

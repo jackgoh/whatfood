@@ -25,13 +25,13 @@ def tune(X_train, X_test, y_train, y_test):
 
     model.compile(
         loss='categorical_crossentropy',
-        optimizer=SGD(lr=0.00001, momentum=0.9),
+        optimizer=SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True),
         metrics=['accuracy'])
 
     print "Fine-tuning CNN.."
 
     hist = model.fit(X_train, Y_train,
-              nb_epoch=2000, batch_size=32,verbose=1,
+              nb_epoch=400, batch_size=32,verbose=1,
               validation_data=(X_test, Y_test))
 
     util.save_history(hist,"alex_finetune67_fold"+ str(fold_count),fold_count)
