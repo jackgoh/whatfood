@@ -546,7 +546,7 @@ def load_svm_deep_features_model(nb_class, weights_path=None, top_model_weight_p
 
     return model
 
-def load_alex_model(weights_path=None, nb_class=None):
+def load_alexnet_model(weights_path=None, nb_class=None):
 
     inputs = Input(shape=(3,227,227))
 
@@ -592,7 +592,7 @@ def load_alex_model(weights_path=None, nb_class=None):
 
     if weights_path:
         base_model.load_weights(weights_path)
-        
+
     return base_model
 
 def load_svm_alex_model(weights_path=None, nb_class=None):

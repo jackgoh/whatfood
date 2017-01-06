@@ -21,25 +21,25 @@ def tune(X_train, X_test, y_train, y_test):
     Y_test = np_utils.to_categorical(y_test, config.nb_class)
 
     model = None
-    model = util.load_alexnet_model(weights_path=config.alexnet_weights_path, nb_class=config.nb_class)
+    model = util.load_alexnet_model(weights_path=None, nb_class=config.nb_class)
 
     model.compile(
         loss='categorical_crossentropy',
-        optimizer=SGD(lr=0.00001, decay=1e-6, momentum=0.9, nesterov=True),
+        optimizer=SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True),
         metrics=['accuracy'])
 
-    print "Fine-tuning CNN.."
+    print "Training from scratch CNN.."
 
     hist = model.fit(X_train, Y_train,
-              nb_epoch=2000, batch_size=32,verbose=1,
+              nb_epoch=200, batch_size=32,verbose=1,
               validation_data=(X_test, Y_test))
 
-    util.save_history(hist,"alex_finetune67_fold"+ str(fold_count),fold_count)
+    util.save_history(hist,"alex_scratch_fold"+ str(fold_count),fold_count)
 
     scores = model.evaluate(X_test, Y_test, verbose=0)
     print("Softmax %s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
 
-    model.save_weights("models/alex_finetune67_weights"+ str(fold_count) +".h5")
+    model.save_weights("models/alex_scratch_weights"+ str(fold_count) +".h5")
 
     # Clear memory
     X_train = None
