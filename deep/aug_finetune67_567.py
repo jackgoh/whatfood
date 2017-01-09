@@ -1,6 +1,6 @@
 from keras.optimizers import SGD
 from sklearn.metrics import classification_report
-from sklearn.model_selection import train_test_split
+from sklearn.cross_validation import StratifiedKFold
 from keras.utils import np_utils
 from keras.preprocessing.image import ImageDataGenerator
 
@@ -31,7 +31,7 @@ def save_bottleneck_svmfeatures(X_train, X_test, y_train, y_test, pretrained_wei
     print "Deep features extracted ", bottleneck_features_train.shape[1:]
 
 # Train top model and save weithgs
-def tune(X_train, X_test, y_train, y_test):
+def train_top_model(X_train, X_test, y_train, y_test):
 
     model = util.load_alex_finetune56_finetune567(nb_class=config.nb_class, weights_path=config.alexnet_weights_path,top_model_weight_path="models/alex_finetune67_aug_weights" + str(fold_count) + ".h5")
 
@@ -39,14 +39,13 @@ def tune(X_train, X_test, y_train, y_test):
     Y_train = np_utils.to_categorical(y_train, config.nb_class)
     Y_test = np_utils.to_categorical(y_test, config.nb_class)
 
+    shape=X_train.shape[1:]
+
     model.compile(
         loss='sparse_categorical_crossentropy',
         optimizer=SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True),
         metrics=['accuracy'])
 
-    print "Fine-tuning CNN.."
-
-    #Real-time Data Augmentation using In-Built Function of Keras
     datagen = ImageDataGenerator(rotation_range=40,
                                  width_shift_range=0.3,
                                  height_shift_range=0.3,
@@ -58,24 +57,15 @@ def tune(X_train, X_test, y_train, y_test):
     hist = model.fit_generator(datagen.flow(X_train, y_train, batch_size=32), nb_epoch=400,
                         samples_per_epoch=X_train.shape[0], validation_data = (X_test,y_test))
 
-    #hist = model.fit(X_train, Y_train,
-    #          nb_epoch=400, batch_size=32,verbose=1,
-    #          validation_data=(X_test, Y_test))
 
-    util.save_history(hist,"alex_finetune67_567_aug_fold"+ str(fold_count),fold_count)
+    util.save_history(hist,"aug_finetune56_finetune567_fold"+ str(fold_count),fold_count)
 
-    model.save_weights("models/alex_finetune67_567_aug_weights"+ str(fold_count) +".h5")
-
-    #scores = model.evaluate(X_test, y_test, verbose=0)
+    #scores = model.evaluate(X_test, Y_test, verbose=0)
+    model.save_weights("aug_models/alex_finetune56_finetune567" + str(fold_count) + ".h5")
+    #model.save_weights("model/alex_topmodel" + str(fold_count) + ".h5")
     #print("Softmax %s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
 
-    # Clear memory
-    model= None
-    X_train = None
-    Y_train = None
-    X_test = None
-    Y_test = None
-
+    #return scores[1]
 
 # SVM classification
 def train_svm(y_train, y_test):
@@ -118,6 +108,7 @@ def train_svm(y_train, y_test):
     return score
 
 if __name__ == "__main__":
+    n_folds = 2
     total_scores = 0
 
     print "Loading data.."
@@ -128,8 +119,20 @@ if __name__ == "__main__":
     print lz.shape
     print "Data loaded !"
 
-    X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.5)
-    print "Test train Shape: "
-    print X_train.shape
-    print X_test.shape
-    tune(X_train, X_test, y_train, y_test)
+    skf = StratifiedKFold(y=lz, n_folds=n_folds, shuffle=False)
+
+    for i, (train, test) in enumerate(skf):
+        print "Test train Shape: "
+        print data[train].shape
+        print data[test].shape
+        print ("Running Fold %d / %d" % (i+1, n_folds))
+
+        #save_bottleneck_features(data[train], data[test],labels[train], labels[test])
+        train_top_model(data[train], data[test],labels[train], labels[test])
+
+        #save_bottleneck_svmfeatures(data[train], data[test],labels[train], labels[test],"models/alex_finetune56_finetune567" + str(fold_count) + ".h5")
+        #svm_scores = train_svm(labels[train], labels[test])
+
+        #total_scores = total_scores + svm_scores
+        #fold_count = fold_count + 1
+    #print("Average acc : %.2f%%" % (total_scores/n_folds*100))

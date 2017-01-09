@@ -1,6 +1,6 @@
 from keras.optimizers import SGD
 from sklearn.metrics import classification_report
-from sklearn.model_selection import train_test_split
+from sklearn.cross_validation import StratifiedKFold
 from keras.utils import np_utils
 from keras.preprocessing.image import ImageDataGenerator
 
@@ -74,8 +74,15 @@ if __name__ == "__main__":
     print lz.shape
     print "Data loaded !"
 
-    X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.5)
-    print "Test train Shape: "
-    print X_train.shape
-    print X_test.shape
-    tune(X_train, X_test, y_train, y_test)
+    skf = StratifiedKFold(y=lz, n_folds=config.n_folds, shuffle=False)
+
+    for i, (train, test) in enumerate(skf):
+        print "Test train Shape: "
+        print data[train].shape
+        print data[test].shape
+        print ("Running Fold %d / %d" % (i+1, config.n_folds))
+
+        tune(data[train], data[test],labels[train], labels[test])
+        #total_scores = total_scores + scores
+        #fold_count = fold_count + 1
+    #print("Average acc : %.2f%%" % (total_scores/config.n_folds*100))
