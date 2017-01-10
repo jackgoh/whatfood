@@ -54,14 +54,14 @@ def train_top_model(X_train, X_test, y_train, y_test):
                                  shear_range = 0.25,
                                  fill_mode='nearest')
     datagen.fit(X_train)
-    hist = model.fit_generator(datagen.flow(X_train, y_train, batch_size=32), nb_epoch=400,
+    hist = model.fit_generator(datagen.flow(X_train, y_train, batch_size=32), nb_epoch=100,
                         samples_per_epoch=X_train.shape[0], validation_data = (X_test,y_test))
 
 
     util.save_history(hist,"aug_finetune56_finetune567_fold"+ str(fold_count),fold_count)
 
     #scores = model.evaluate(X_test, Y_test, verbose=0)
-    model.save_weights("aug_models/alex_finetune56_finetune567" + str(fold_count) + ".h5")
+    model.save_weights("models/aug_alex_finetune56_finetune567" + str(fold_count) + ".h5")
     #model.save_weights("model/alex_topmodel" + str(fold_count) + ".h5")
     #print("Softmax %s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
 
