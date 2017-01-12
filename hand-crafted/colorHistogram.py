@@ -250,7 +250,7 @@ for train_index, test_index in sfold:
     plt.title('Total true positive per sample')
 
     autolabel(rects1)
-    plt.savefig('barchart_deep_feaures'+ str(fold_count) +'.png')
+    #plt.savefig('barchart_deep_feaures'+ str(fold_count) +'.png')
     plt.show()
 
     print correct_predict_top1
