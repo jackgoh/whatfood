@@ -16,6 +16,7 @@ from sklearn.cross_validation import train_test_split
 from sklearn.metrics import confusion_matrix
 from sklearn.cross_validation import KFold
 from sklearn.cross_validation import StratifiedKFold
+from sklearn import svm
 from _vlfeat import *
 '''
 def dictionary(descriptors, N):
