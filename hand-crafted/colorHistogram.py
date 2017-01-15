@@ -13,6 +13,7 @@ from sklearn import svm
 import numpy as np
 import argparse
 import imutils
+import hickle as hkl
 import cv2
 import os
 
@@ -74,21 +75,21 @@ def image_to_feature_vector(image, size=(32, 32)):
 	# a list of raw pixel intensities
 	return cv2.resize(image, size).flatten()
 
-def extract_color_histogram(image, bins=(8, 8, 8)):
+def extract_color_histogram(image, bins=(16, 16, 16)):
 	# extract a 3D color histogram from the HSV color space using
 	# the supplied number of `bins` per channel
-	hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-	hist = cv2.calcHist([hsv], [0, 1, 2], None, bins,
-		[0, 180, 0, 256, 0, 256])
+	#hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+	hist = cv2.calcHist([image], [0, 1, 2], None, bins,
+		[0, 256, 0, 256, 0, 256])
 
 	# handle normalizing the histogram if we are using OpenCV 2.4.X
-	if imutils.is_cv2():
-		hist = cv2.normalize(hist)
+	#if imutils.is_cv2():
+	#	hist = cv2.normalize(hist)
 
 	# otherwise, perform "in place" normalization in OpenCV 3 (I
 	# personally hate the way this is done
-	else:
-		cv2.normalize(hist, hist)
+	#else:
+	#	cv2.normalize(hist, hist)
 
 	# return the flattened histogram as the feature vector
 	return hist.flatten()
@@ -141,6 +142,9 @@ for (i, imagePath) in enumerate(imagePaths):
 features = np.array(features)
 labels = np.array(labels)
 
+hkl.dump(features, "histogram_features.h5")
+hkl.dump(labels, "histogram_labels.h5")
+
 le = preprocessing.LabelEncoder()
 le.fit(labels)
 labels = le.transform(labels)
@@ -169,19 +173,12 @@ for train_index, test_index in sfold:
 
     # Compute confusion matrix
     cm = confusion_matrix(test_label, y_pred)
+    print cm
     np.set_printoptions(precision=2)
     #print('Confusion matrix, without normalization')
     #print(cm)
     plt.figure()
     plot_confusion_matrix(cm)
-
-    # Normalize the confusion matrix by row (i.e by the number of samples
-    # in each class)
-    cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-    #print('Normalized confusion matrix')
-    #print(cm_normalicd pzed)
-    plt.figure()
-    plot_confusion_matrix(cm_normalized, title='Normalized confusion matrix')
 
     plt.show()
 

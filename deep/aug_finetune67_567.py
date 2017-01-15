@@ -23,7 +23,7 @@ def tune(X_train, X_test, y_train, y_test):
 
     model = None
     model = util.load_alex_finetune56_finetune567(nb_class=config.nb_class , weights_path=config.alexnet_weights_path, top_model_weight_path="models/alex_finetune67_aug_weights1.h5")
-
+    print model.summary()
     model.compile(
 
         loss='sparse_categorical_crossentropy',
@@ -41,7 +41,7 @@ def tune(X_train, X_test, y_train, y_test):
                                  shear_range = 0.25,
                                  fill_mode='nearest')
     datagen.fit(X_train)
-    hist = model.fit_generator(datagen.flow(X_train, y_train, batch_size=32), nb_epoch=10,
+    hist = model.fit_generator(datagen.flow(X_train, y_train, batch_size=32), nb_epoch=100,
                         samples_per_epoch=X_train.shape[0], validation_data = (X_test,y_test))
 
     #hist = model.fit(X_train, Y_train,

@@ -379,11 +379,9 @@ def load_alex_finetune56_finetune567(nb_class, weights_path=None, top_model_weig
 
     base_model.load_weights(weights_path)
 
-    #model = Model(input=inputs, output=conv_5)
-
     base_model = Model(input=inputs, output=conv_5)
 
-    for layer in base_model.layers[:17]:
+    for layer in base_model.layers[:20]:
         print layer
         layer.trainable = False
 
