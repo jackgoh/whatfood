@@ -18,22 +18,19 @@ import util
 fold_count = 1
 
 def tune(X_train, X_test, y_train, y_test):
-    print y_train
     Y_train = np_utils.to_categorical(y_train, config.nb_class)
     Y_test = np_utils.to_categorical(y_test, config.nb_class)
 
     model = None
-    model = util.load_alexnet_model_finetune567(weights_path=config.alexnet_weights_path, nb_class=config.nb_class)
+    model = util.load_alexnet_model(weights_path=None, nb_class=config.nb_class)
 
     model.compile(
-
         loss='sparse_categorical_crossentropy',
         optimizer=SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True),
         metrics=['accuracy'])
 
-    print "Fine-tuning CNN.."
+    print "Training from scratch CNN.."
 
-    #Real-time Data Augmentation using In-Built Function of Keras
     datagen = ImageDataGenerator(rotation_range=40,
                                  width_shift_range=0.3,
                                  height_shift_range=0.3,
@@ -45,23 +42,21 @@ def tune(X_train, X_test, y_train, y_test):
     hist = model.fit_generator(datagen.flow(X_train, y_train, batch_size=32), nb_epoch=400,
                         samples_per_epoch=X_train.shape[0], validation_data = (X_test,y_test))
 
-    #hist = model.fit(X_train, Y_train,
-    #          nb_epoch=400, batch_size=32,verbose=1,
-    #          validation_data=(X_test, Y_test))
 
-    util.save_history(hist,"alex_finetune567_aug_fold"+ str(fold_count),fold_count)
+    util.save_history(hist,"aug_alex_scratch_fold"+ str(fold_count),fold_count)
 
-    model.save_weights("models/alex_finetune567_aug_weights"+ str(fold_count) +".h5")
-
-    #scores = model.evaluate(X_test, y_test, verbose=0)
+    #scores = model.evaluate(X_test, Y_test, verbose=0)
     #print("Softmax %s: %.2f%%" % (model.metrics_names[1], scores[1]*100))
 
+    model.save_weights("models/aug_alex_scratch_weights"+ str(fold_count) +".h5")
+
     # Clear memory
-    model= None
     X_train = None
     Y_train = None
     X_test = None
     Y_test = None
+
+    return scores[1]
 
 
 if __name__ == "__main__":
