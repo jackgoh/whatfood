@@ -25,7 +25,7 @@ def tune(X_train, X_test, y_train, y_test):
 
     model.compile(
         loss='categorical_crossentropy',
-        optimizer=SGD(lr=0.0001, decay=1e-6, momentum=0.9, nesterov=True),
+        optimizer=SGD(lr=0.00001, decay=1e-6, momentum=0.9, nesterov=True),
         metrics=['accuracy'])
 
     print "Fine-tuning CNN.."

@@ -196,24 +196,17 @@ def train(gmm, features):
             start_index += 100
             end_index += 100
 
-        objects = ['AisKacang' , 'AngKuKueh' , 'ApamBalik' , 'Asamlaksa' , 'Bahulu' , 'Bakkukteh',
-         'BananaLeafRice' , 'Bazhang' , 'BeefRendang' , 'BingkaUbi' , 'Buburchacha',
-         'Buburpedas' , 'Capati' , 'Cendol' , 'ChaiTowKuay' , 'CharKuehTiao' , 'CharSiu',
-         'CheeCheongFun' , 'ChiliCrab' , 'Chweekueh' , 'ClayPotRice' , 'CucurUdang',
-         'CurryLaksa' , 'CurryPuff' , 'Dodol' , 'Durian' , 'DurianCrepe' , 'FishHeadCurry',
-         'Guava' , 'HainaneseChickenRice' , 'HokkienMee' , 'Huatkuih' , 'IkanBakar',
-         'Kangkung' , 'KayaToast' , 'Keklapis' , 'Ketupat' , 'KuihDadar' , 'KuihLapis',
-         'KuihSeriMuka' , 'Langsat' , 'Lekor' , 'Lemang' , 'LepatPisang' , 'LorMee',
-         'Maggi goreng' , 'Mangosteen' , 'MeeGoreng' , 'MeeHoonKueh' , 'MeeHoonSoup',
-         'MeeJawa' , 'MeeRebus' , 'MeeRojak' , 'MeeSiam' , 'Murtabak' , 'Murukku',
-         'NasiGorengKampung' , 'NasiImpit' , 'Nasikandar' , 'Nasilemak' , 'Nasipattaya',
-         'Ondehondeh' , 'Otakotak' , 'OysterOmelette' , 'PanMee' , 'PineappleTart',
-         'PisangGoreng' , 'Popiah' , 'PrawnMee' , 'Prawnsambal' , 'Puri' , 'PutuMayam',
-         'PutuPiring' , 'Rambutan' , 'Rojak' , 'RotiCanai' , 'RotiJala' , 'RotiJohn',
-         'RotiNaan' , 'RotiTissue' , 'SambalPetai' , 'SambalUdang' , 'Satay' , 'Sataycelup',
-         'SeriMuka' , 'SotoAyam' , 'TandooriChicken' , 'TangYuan' , 'TauFooFah',
-         'TauhuSumbat' , 'Thosai' , 'TomYumSoup' , 'Wajik' , 'WanTanMee' , 'WaTanHo' , 'Wonton',
-         'YamCake' , 'YongTauFu' , 'Youtiao' , 'Yusheng']
+        objects = ["Murukku","MeeHoonKueh","BuburPedas","Nasikandar","Mangosteen","KuihDadar","BingkaUbi","CharSiu","Sataycelup",
+        "Kangkung","Cendol","SeriMuka","CheeCheongFun","Bakkukteh","Chweekueh","KuihLapis","DurianCrepe",
+        "Lemang","OysterOmelette","AngKuKueh","RotiJohn","Huatkuih","PisangGoreng","CurryPuff","TomYumSoup",
+        "LorMee","PrawnMee","Wonton","MeeGoreng","IkanBakar","Wajik","AisKacang","Nasipattaya","Keklapis","ChaiTowKuay",
+        "SambalUdang","Puri","Lekor","PutuPiring","Murtabak","Buburchacha","Asamlaksa","TangYuan","NasiGorengKampung",
+        "PutuMayam","PineappleTart","Bazhang","MeeSiam","Satay","CharKuehTiao","Thosai","Bahulu","Youtiao","Otakotak","Guava",
+        "FishHeadCurry","Dodol","LepatPisang","Ketupat","YongTauFu","Yusheng","TauhuSumbat","TauFooFah","HokkienMee","BeefRendang",
+        "Prawnsambal","NasiImpit","SambalPetai","CucurUdang","RotiCanai","Durian","KayaToast","MeeRebus","ApamBalik","BananaLeafRice",
+        "Capati","Popiah","ClayPotRice","WaTanHo","MeeJawa","RotiNaan","KuihSeriMuka","ChiliCrab","HainaneseChickenRice","Rambutan","Nasilemak",
+        "PanMee","WanTanMee","OndehOndeh","CurryLaksa","MaggiGoreng","RotiTissue","Rojak","TandooriChicken","MeeRojak","SotoAyam","MeeHoonSoup",
+        "Langsat","YamCake","RotiJala"]
         y_pos = np.arange(len(objects))
         performance = correct_predict_top1
 
@@ -242,42 +235,28 @@ def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.jet):
     plt.title(title)
     plt.colorbar()
     tick_marks = np.arange(100)
-    plt.xticks(tick_marks, ['AisKacang' , 'AngKuKueh' , 'ApamBalik' , 'Asamlaksa' , 'Bahulu' , 'Bakkukteh',
- 'BananaLeafRice' , 'Bazhang' , 'BeefRendang' , 'BingkaUbi' , 'Buburchacha',
- 'Buburpedas' , 'Capati' , 'Cendol' , 'ChaiTowKuay' , 'CharKuehTiao' , 'CharSiu',
- 'CheeCheongFun' , 'ChiliCrab' , 'Chweekueh' , 'ClayPotRice' , 'CucurUdang',
- 'CurryLaksa' , 'CurryPuff' , 'Dodol' , 'Durian' , 'DurianCrepe' , 'FishHeadCurry',
- 'Guava' , 'HainaneseChickenRice' , 'HokkienMee' , 'Huatkuih' , 'IkanBakar',
- 'Kangkung' , 'KayaToast' , 'Keklapis' , 'Ketupat' , 'KuihDadar' , 'KuihLapis',
- 'KuihSeriMuka' , 'Langsat' , 'Lekor' , 'Lemang' , 'LepatPisang' , 'LorMee',
- 'Maggi goreng' , 'Mangosteen' , 'MeeGoreng' , 'MeeHoonKueh' , 'MeeHoonSoup',
- 'MeeJawa' , 'MeeRebus' , 'MeeRojak' , 'MeeSiam' , 'Murtabak' , 'Murukku',
- 'NasiGorengKampung' , 'NasiImpit' , 'Nasikandar' , 'Nasilemak' , 'Nasipattaya',
- 'Ondehondeh' , 'Otakotak' , 'OysterOmelette' , 'PanMee' , 'PineappleTart',
- 'PisangGoreng' , 'Popiah' , 'PrawnMee' , 'Prawnsambal' , 'Puri' , 'PutuMayam',
- 'PutuPiring' , 'Rambutan' , 'Rojak' , 'RotiCanai' , 'RotiJala' , 'RotiJohn',
- 'RotiNaan' , 'RotiTissue' , 'SambalPetai' , 'SambalUdang' , 'Satay' , 'Sataycelup',
- 'SeriMuka' , 'SotoAyam' , 'TandooriChicken' , 'TangYuan' , 'TauFooFah',
- 'TauhuSumbat' , 'Thosai' , 'TomYumSoup' , 'Wajik' , 'WanTanMee' , 'WaTanHo' , 'Wonton',
- 'YamCake' , 'YongTauFu' , 'Youtiao' , 'Yusheng'], rotation=45)
-    plt.yticks(tick_marks, ['AisKacang' , 'AngKuKueh' , 'ApamBalik' , 'Asamlaksa' , 'Bahulu' , 'Bakkukteh',
- 'BananaLeafRice' , 'Bazhang' , 'BeefRendang' , 'BingkaUbi' , 'Buburchacha',
- 'Buburpedas' , 'Capati' , 'Cendol' , 'ChaiTowKuay' , 'CharKuehTiao' , 'CharSiu',
- 'CheeCheongFun' , 'ChiliCrab' , 'Chweekueh' , 'ClayPotRice' , 'CucurUdang',
- 'CurryLaksa' , 'CurryPuff' , 'Dodol' , 'Durian' , 'DurianCrepe' , 'FishHeadCurry',
- 'Guava' , 'HainaneseChickenRice' , 'HokkienMee' , 'Huatkuih' , 'IkanBakar',
- 'Kangkung' , 'KayaToast' , 'Keklapis' , 'Ketupat' , 'KuihDadar' , 'KuihLapis',
- 'KuihSeriMuka' , 'Langsat' , 'Lekor' , 'Lemang' , 'LepatPisang' , 'LorMee',
- 'Maggi goreng' , 'Mangosteen' , 'MeeGoreng' , 'MeeHoonKueh' , 'MeeHoonSoup',
- 'MeeJawa' , 'MeeRebus' , 'MeeRojak' , 'MeeSiam' , 'Murtabak' , 'Murukku',
- 'NasiGorengKampung' , 'NasiImpit' , 'Nasikandar' , 'Nasilemak' , 'Nasipattaya',
- 'Ondehondeh' , 'Otakotak' , 'OysterOmelette' , 'PanMee' , 'PineappleTart',
- 'PisangGoreng' , 'Popiah' , 'PrawnMee' , 'Prawnsambal' , 'Puri' , 'PutuMayam',
- 'PutuPiring' , 'Rambutan' , 'Rojak' , 'RotiCanai' , 'RotiJala' , 'RotiJohn',
- 'RotiNaan' , 'RotiTissue' , 'SambalPetai' , 'SambalUdang' , 'Satay' , 'Sataycelup',
- 'SeriMuka' , 'SotoAyam' , 'TandooriChicken' , 'TangYuan' , 'TauFooFah',
- 'TauhuSumbat' , 'Thosai' , 'TomYumSoup' , 'Wajik' , 'WanTanMee' , 'WaTanHo' , 'Wonton',
- 'YamCake' , 'YongTauFu' , 'Youtiao' , 'Yusheng'])
+    plt.xticks(tick_marks, ["Murukku","MeeHoonKueh","BuburPedas","Nasikandar","Mangosteen","KuihDadar","BingkaUbi","CharSiu","Sataycelup",
+    "Kangkung","Cendol","SeriMuka","CheeCheongFun","Bakkukteh","Chweekueh","KuihLapis","DurianCrepe",
+    "Lemang","OysterOmelette","AngKuKueh","RotiJohn","Huatkuih","PisangGoreng","CurryPuff","TomYumSoup",
+    "LorMee","PrawnMee","Wonton","MeeGoreng","IkanBakar","Wajik","AisKacang","Nasipattaya","Keklapis","ChaiTowKuay",
+    "SambalUdang","Puri","Lekor","PutuPiring","Murtabak","Buburchacha","Asamlaksa","TangYuan","NasiGorengKampung",
+    "PutuMayam","PineappleTart","Bazhang","MeeSiam","Satay","CharKuehTiao","Thosai","Bahulu","Youtiao","Otakotak","Guava",
+    "FishHeadCurry","Dodol","LepatPisang","Ketupat","YongTauFu","Yusheng","TauhuSumbat","TauFooFah","HokkienMee","BeefRendang",
+    "Prawnsambal","NasiImpit","SambalPetai","CucurUdang","RotiCanai","Durian","KayaToast","MeeRebus","ApamBalik","BananaLeafRice",
+    "Capati","Popiah","ClayPotRice","WaTanHo","MeeJawa","RotiNaan","KuihSeriMuka","ChiliCrab","HainaneseChickenRice","Rambutan","Nasilemak",
+    "PanMee","WanTanMee","OndehOndeh","CurryLaksa","MaggiGoreng","RotiTissue","Rojak","TandooriChicken","MeeRojak","SotoAyam","MeeHoonSoup",
+    "Langsat","YamCake","RotiJala"], rotation=90)
+    plt.yticks(tick_marks, ["Murukku","MeeHoonKueh","BuburPedas","Nasikandar","Mangosteen","KuihDadar","BingkaUbi","CharSiu","Sataycelup",
+    "Kangkung","Cendol","SeriMuka","CheeCheongFun","Bakkukteh","Chweekueh","KuihLapis","DurianCrepe",
+    "Lemang","OysterOmelette","AngKuKueh","RotiJohn","Huatkuih","PisangGoreng","CurryPuff","TomYumSoup",
+    "LorMee","PrawnMee","Wonton","MeeGoreng","IkanBakar","Wajik","AisKacang","Nasipattaya","Keklapis","ChaiTowKuay",
+    "SambalUdang","Puri","Lekor","PutuPiring","Murtabak","Buburchacha","Asamlaksa","TangYuan","NasiGorengKampung",
+    "PutuMayam","PineappleTart","Bazhang","MeeSiam","Satay","CharKuehTiao","Thosai","Bahulu","Youtiao","Otakotak","Guava",
+    "FishHeadCurry","Dodol","LepatPisang","Ketupat","YongTauFu","Yusheng","TauhuSumbat","TauFooFah","HokkienMee","BeefRendang",
+    "Prawnsambal","NasiImpit","SambalPetai","CucurUdang","RotiCanai","Durian","KayaToast","MeeRebus","ApamBalik","BananaLeafRice",
+    "Capati","Popiah","ClayPotRice","WaTanHo","MeeJawa","RotiNaan","KuihSeriMuka","ChiliCrab","HainaneseChickenRice","Rambutan","Nasilemak",
+    "PanMee","WanTanMee","OndehOndeh","CurryLaksa","MaggiGoreng","RotiTissue","Rojak","TandooriChicken","MeeRojak","SotoAyam","MeeHoonSoup",
+    "Langsat","YamCake","RotiJala"])
     plt.tight_layout()
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
@@ -286,20 +265,20 @@ def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.jet):
 
 def load_gmm(folder = ""):
     print "Loading GMM.."
-    f = file("means.gmm.npy","rb")
+    f = file("64k/means.gmm.npy","rb")
     means = np.load(f)
 
-    f = file("covs.gmm.npy","rb")
+    f = file("64k/covs.gmm.npy","rb")
     covs = np.load(f)
 
-    f = file("weights.gmm.npy","rb")
+    f = file("64k/weights.gmm.npy","rb")
     weights = np.load(f)
 
     return means, covs, weights
 
 def load_fv():
     print "Loading SIFT fisher vector.."
-    with open('sift_fv.pkl', 'rb') as f:
+    with open('64k/sift_fv.pkl', 'rb') as f:
         fv = pickle.load(f)
     #fv = hkl.load("sift_fv.h5")
     return fv
@@ -308,14 +287,14 @@ def load_feature():
     print "Loading SIFT Feature.."
     #with open('sift_feature.pkl', 'rb') as f:
     #    feature = pickle.load(f)
-    feature = hkl.load('sift_feature.h5')
+    feature = hkl.load('64k/sift_feature.h5')
     return feature
 
 number = 16
 working_folder = "../dataset/food100"
 gengmm_folder = "../dataset/food100"
-loadgmm = False
-loadfv = False
+loadgmm = True
+loadfv = True
 
 total_time = time.time()
 
